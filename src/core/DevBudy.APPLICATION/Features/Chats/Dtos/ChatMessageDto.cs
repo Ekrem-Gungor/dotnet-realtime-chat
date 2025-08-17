@@ -8,7 +8,7 @@ namespace DevBudy.APPLICATION.Features.Chats.Dtos
 {
     public class ChatMessageDto : BaseDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public int? SenderUserId { get; set; }
         public string SenderUserName { get; set; }
         public string Message { get; set; }

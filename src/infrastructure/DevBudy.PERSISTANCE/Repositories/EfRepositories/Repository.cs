@@ -1,4 +1,4 @@
-﻿using DevBudy.CONTRACT.Repositories;
+﻿using DevBudy.CONTRACT.Repositories.EFRepositories;
 using DevBudy.DOMAIN.Entities.Abstracts;
 using DevBudy.PERSISTANCE.ContextClasses;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DevBudy.PERSISTANCE.Repositories.EfRepositories
+namespace DevBudy.PERSISTANCE.Repositories.EFRepositories
 {
     public class Repository<T> : IRepository<T> where T : class, IEntity
     {

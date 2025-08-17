@@ -1,6 +1,8 @@
 ﻿using DevBudy.APPLICATION.Events.ChatMessages;
 using DevBudy.APPLICATION.Features.Chats.Dtos;
-using DevBudy.CONTRACT.Repositories;
+using DevBudy.CONTRACT.Repositories.EFRepositories;
+using DevBudy.CONTRACT.Repositories.RedisRepositories;
+using DevBudy.DOMAIN.CachingModels;
 using DevBudy.DOMAIN.Entities.Concretes;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -12,44 +14,62 @@ using System.Threading.Tasks;
 
 namespace DevBudy.APPLICATION.Features.Chats.Commands
 {
-    public class CreateChatMessageCommandHandler : IRequestHandler<CreateChatMessageCommand, int>
+    public class CreateChatMessageCommandHandler : IRequestHandler<CreateChatMessageCommand, string>
     {
-        private readonly IChatMessageRepository _chatMsgRepo;
+        private readonly IMessageRedisRepository _msgRedisRepo;
+        private readonly IMessageQuotaRepository _quotaRepo;
         private readonly UserManager<AppUser> _userManager;
         private readonly IMediator _mediator;
 
-        public CreateChatMessageCommandHandler(IChatMessageRepository chatMsgRepo, IMediator mediator, UserManager<AppUser> userManager)
+        public CreateChatMessageCommandHandler(IMediator mediator, UserManager<AppUser> userManager, IMessageRedisRepository msgRedisRepo, IMessageQuotaRepository quotaRepo)
         {
-            _chatMsgRepo = chatMsgRepo;
             _userManager = userManager;
             _mediator = mediator;
+            _msgRedisRepo = msgRedisRepo;
+            _quotaRepo = quotaRepo;
         }
 
-        public async Task<int> Handle(CreateChatMessageCommand request, CancellationToken cancellationToken)
+        public async Task<string> Handle(CreateChatMessageCommand request, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(request.Message) || string.IsNullOrEmpty(request.SenderUserName))
             {
                 throw new ArgumentException("Message cannot be empty.", nameof(request.Message));
             }
-            int senderUserId = _userManager.FindByNameAsync(request.SenderUserName).Result.Id;
-            ChatMessage chatMessage = new()
+            AppUser senderUser = await _userManager.FindByNameAsync(request.SenderUserName);
+            var hasQuota = await _quotaRepo.GetQuotaAsync(senderUser.Id.ToString());
+            if (hasQuota.ReaminingMessage > 0 && await _quotaRepo.TryConsumeAsync(senderUser.Id.ToString()))
             {
-                SenderID = senderUserId,
-                Message = request.Message
-            };
-            await _chatMsgRepo.CreateAsync(chatMessage);
+                RedisChatMessage redisChatMsg = new()
+                {
+                    MessageId = Guid.NewGuid(),
+                    Message = request.Message,
+                    SenderUserName = request.SenderUserName
+                };
 
-            ChatMessageDto chatMessageDto = new()
-            {
-                Id = chatMessage.ID,
-                Message = chatMessage.Message,
-                SenderUserId = chatMessage.SenderID,
-                SenderUserName = chatMessage.Sender?.UserName,
-                SendAt = chatMessage.CreatedDate
-            };
+                ChatMessageDto chatMessageDto = new()
+                {
+                    Id = Guid.NewGuid(),
+                    SenderUserId = senderUser.Id,
+                    SenderUserName = redisChatMsg.SenderUserName,
+                    Message = redisChatMsg.Message,
+                    SendAt = redisChatMsg.CreateAt
+                };
 
-            await _mediator.Publish(new ChatMessageCreatedEvent(chatMessageDto));
-            return chatMessageDto.Id;
+                long score = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+                await _msgRedisRepo.AddMessageToSortedSetAsync($"message:{chatMessageDto.Id}", redisChatMsg, score);
+                await _mediator.Publish(new ChatMessageCreatedEvent(chatMessageDto));
+                return "Mesaj gönderildi.";
+            }
+
+            //ChatMessage chatMessage = new()
+            //{
+            //    SenderID = senderUser.Id,
+            //    Message = request.Message
+            //};
+            //await _chatMsgRepo.CreateAsync(chatMessage);
+
+            return "Yeterli mesaj kotanız kalmamıştır.";
         }
     }
 }

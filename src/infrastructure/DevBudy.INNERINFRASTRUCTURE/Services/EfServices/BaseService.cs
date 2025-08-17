@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
-using DevBudy.APPLICATION.Services;
-using DevBudy.CONTRACT.Repositories;
+using DevBudy.APPLICATION.Services.EFServices;
+using DevBudy.CONTRACT.Repositories.EFRepositories;
 using DevBudy.DOMAIN.Entities.Abstracts;
 using System;
 using System.Collections.Generic;

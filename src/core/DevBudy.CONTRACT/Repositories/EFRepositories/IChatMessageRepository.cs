@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DevBudy.CONTRACT.Repositories
+namespace DevBudy.CONTRACT.Repositories.EFRepositories
 {
-    public interface IAppRoleRepository : IRepository<AppRole>
+    public interface IChatMessageRepository : IRepository<ChatMessage>
     {
 
     }

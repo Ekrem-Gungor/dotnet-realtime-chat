@@ -4,6 +4,7 @@ using DevBudy.API.Hubs;
 using DevBudy.APPLICATION.Features.Auths.Commands;
 using DevBudy.DEPENDENCYRESOLVER.Bootstrappers;
 using DevBudy.DEPENDENCYRESOLVER.CustomServiceInjections;
+using DevBudy.INNERINFRASTRUCTURE.Redis;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCustomIdentityServices();
 builder.Services.AddJwtAuthtentication(builder.Configuration, "AccessToken");
 builder.Services.AddMapperInjection();
+builder.Services.AddRedisConnectionProvider(builder.Configuration);
 
 // Autofac DI Container
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
@@ -58,6 +60,12 @@ builder.Services.AddCors(options =>
 });
 
 WebApplication app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    UserQuotaInitializer initializer = scope.ServiceProvider.GetRequiredService<UserQuotaInitializer>();
+    await initializer.InitializeAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

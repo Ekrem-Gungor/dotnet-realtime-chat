@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DevBudy.CONTRACT.Repositories
+namespace DevBudy.CONTRACT.Repositories.EFRepositories
 {
     public interface IRepository<T> where T : class, IEntity
     {

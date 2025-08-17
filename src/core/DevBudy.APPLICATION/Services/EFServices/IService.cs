@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DevBudy.APPLICATION.Services
+namespace DevBudy.APPLICATION.Services.EFServices
 {
     public interface IService<D, T> where D : class, IEntity where T : class
     {

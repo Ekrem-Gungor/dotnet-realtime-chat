@@ -1,5 +1,5 @@
 ﻿using Autofac;
-using DevBudy.PERSISTANCE.Repositories.EfRepositories;
+using DevBudy.PERSISTANCE.Repositories.EFRepositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;

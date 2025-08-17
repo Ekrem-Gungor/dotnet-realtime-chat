@@ -1,5 +1,5 @@
 ﻿using DevBudy.APPLICATION.Features.Auths.Dtos.Response;
-using DevBudy.APPLICATION.Services;
+using DevBudy.APPLICATION.Services.EFServices;
 using DevBudy.COMMON.Tools.JwtSettings;
 using DevBudy.DOMAIN.Entities.Concretes;
 using Microsoft.AspNetCore.Identity;

@@ -1,13 +1,16 @@
-﻿
-using DevBudy.APPLICATION.Mapping;
+﻿using DevBudy.APPLICATION.Mapping;
+using DevBudy.APPLICATION.Services.RedisServices;
 using DevBudy.COMMON.Tools.JwtSettings;
 using DevBudy.DOMAIN.Entities.Concretes;
+using DevBudy.INNERINFRASTRUCTURE.Redis;
+using DevBudy.INNERINFRASTRUCTURE.Services.RedisServices;
 using DevBudy.PERSISTANCE.ContextClasses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,7 +56,7 @@ namespace DevBudy.DEPENDENCYRESOLVER.CustomServiceInjections
 
                     ValidateAudience = true,
                     ValidAudience = jwtSettings.Audience,
-                    
+
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
 
@@ -89,6 +92,13 @@ namespace DevBudy.DEPENDENCYRESOLVER.CustomServiceInjections
             {
                 cfg.AddProfile(new MapProfile());
             }, Assembly.GetExecutingAssembly());
+        }
+
+        public static void AddRedisConnectionProvider(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddSingleton<IConnectionMultiplexer>(cm => ConnectionMultiplexer.Connect(configuration["Redis"]));
+            services.AddSingleton<IRedisConnectionProvider, RedisConnectionProvider>();
+            services.AddScoped<UserQuotaInitializer>();
         }
     }
 }

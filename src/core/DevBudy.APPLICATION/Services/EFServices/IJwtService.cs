@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DevBudy.APPLICATION.Services
+namespace DevBudy.APPLICATION.Services.EFServices
 {
     public interface IJwtService
     {
