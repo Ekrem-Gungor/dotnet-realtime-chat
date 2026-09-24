@@ -46,8 +46,8 @@ The solution uses the built-in ASP.NET Core container. `AddRealtimeChat` is the 
 
 ## Known Follow-ups
 
-- Add unit tests for authentication, quota exhaustion, and message time-window queries.
-- Add integration tests with disposable SQL Server and Redis instances.
+- Expand authentication and Redis coverage beyond the critical baseline scenarios.
+- Add SQL Server integration tests with a disposable database instance.
 - Move online presence to a connection-aware store so multiple tabs and abnormal disconnects are handled correctly.
 - Add retention trimming for the Redis message sorted set.
 - Consider separating Identity inheritance from the domain model if the project grows beyond its current scope.

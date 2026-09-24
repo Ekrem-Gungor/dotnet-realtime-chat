@@ -16,6 +16,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_REDIS_CONNECTION: localhost:6379,defaultDatabase=15,abortConnect=false
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,3 +44,6 @@ jobs:
 
       - name: Build
         run: dotnet build RealtimeChat.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test RealtimeChat.sln --configuration Release --no-build --no-restore

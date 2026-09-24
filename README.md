@@ -104,6 +104,17 @@ dotnet run --project src/presentation/webapi/RealtimeChat.Api
 
 The default HTTP launch profile listens on `http://localhost:5258`. Swagger is available at `/swagger` in Development.
 
+### Tests
+
+The test suite includes application tests and Redis-backed integration tests. Redis tests use database `15` by default so development data remains isolated.
+
+```bash
+docker run --rm -d --name realtimechat-test-redis -p 6379:6379 redis:7-alpine
+dotnet test RealtimeChat.sln --configuration Release
+```
+
+Set `TEST_REDIS_CONNECTION` to use a different isolated Redis instance. CI provisions its own Redis service automatically.
+
 ## Authentication Note
 
 Repository seed identities use reserved `example.invalid` addresses and do not contain usable passwords. Create development credentials locally rather than placing shared demo passwords in source control.
@@ -137,7 +148,7 @@ The application validates credentials without creating an Identity application c
 ## Current Limitations
 
 - No registration or password-bootstrap endpoint is provided.
-- No automated test suite is currently included.
+- The initial automated suite covers critical authentication and Redis flows; broader API and SQL integration coverage is still planned.
 - Redis and SQL Server must be provisioned separately.
 - Message quota is a fixed-window Redis control, not a complete abuse-prevention system.
 - Online status is stored in SQL and may need reconciliation after abnormal disconnects.

@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastru
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "presentation", "presentation", "{4D49D651-BA03-407D-8343-EF2DA271F342}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9D9A1F65-924E-4D88-81AA-A07489BF356A}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeChat.Domain", "src\core\RealtimeChat.Domain\RealtimeChat.Domain.csproj", "{D1363534-ED58-4360-ACAE-35237713BFE7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeChat.Application", "src\core\RealtimeChat.Application\RealtimeChat.Application.csproj", "{E7C4C59D-AF97-46AA-A287-A6F3D94E0F25}"
@@ -28,6 +30,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeChat.Common", "src\core\RealtimeChat.Common\RealtimeChat.Common.csproj", "{2ECC92B0-9426-4E0B-970E-2B645C8E5A04}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeChat.Infrastructure", "src\infrastructure\RealtimeChat.Infrastructure\RealtimeChat.Infrastructure.csproj", "{A1D217B6-48C0-487D-9DA7-0A8CD5412A81}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealtimeChat.Tests", "tests\RealtimeChat.Tests\RealtimeChat.Tests.csproj", "{8D4E61B6-5457-4EBE-B057-D61F0195C071}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +71,10 @@ Global
 		{A1D217B6-48C0-487D-9DA7-0A8CD5412A81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1D217B6-48C0-487D-9DA7-0A8CD5412A81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1D217B6-48C0-487D-9DA7-0A8CD5412A81}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D4E61B6-5457-4EBE-B057-D61F0195C071}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D4E61B6-5457-4EBE-B057-D61F0195C071}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D4E61B6-5457-4EBE-B057-D61F0195C071}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D4E61B6-5457-4EBE-B057-D61F0195C071}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -84,6 +92,7 @@ Global
 		{B69450CA-CCF9-4AFE-A0AF-C8756A8DC545} = {6A9CDFC9-5BAE-4FFC-8600-F01A847D728D}
 		{2ECC92B0-9426-4E0B-970E-2B645C8E5A04} = {D4B4EF04-34F9-46B5-A581-BE1608A1E8D7}
 		{A1D217B6-48C0-487D-9DA7-0A8CD5412A81} = {439D7498-84B9-475B-B2FB-80E4AEFBE09C}
+		{8D4E61B6-5457-4EBE-B057-D61F0195C071} = {9D9A1F65-924E-4D88-81AA-A07489BF356A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {89505D3F-8B9D-4184-A813-385D784AFCDE}
