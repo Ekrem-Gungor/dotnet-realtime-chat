@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.vs
+**/bin
+**/obj
+**/TestResults
+tests
+README.md
+docs

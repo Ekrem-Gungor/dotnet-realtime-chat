@@ -7,6 +7,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+builder.Services.AddHealthChecks();
 builder.Services.AddRealtimeChat(builder.Configuration, typeof(Program).Assembly);
 
 string corsOrigin = builder.Configuration["UICORSPath"]
@@ -29,6 +30,8 @@ builder.Services.AddCors(options =>
 
 WebApplication app = builder.Build();
 
+await app.ApplyDatabaseMigrationsAsync();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -42,6 +45,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.MapHub<ChatHub>("/chatHub");
 
