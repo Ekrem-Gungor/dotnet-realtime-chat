@@ -89,6 +89,17 @@ Compose also creates one local demo identity from the values in `.env`:
 
 The example values are intended only for the local disposable environment. Demo identity initialization is opt-in and the application refuses to run it outside `Development`.
 
+### Try the authenticated API in Swagger
+
+1. Open `http://localhost:5258/swagger`.
+2. Expand `POST /api/Auth/login` and select **Try it out**.
+3. Use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from your local `.env` file.
+4. Copy the `token` value from the successful response.
+5. Select **Authorize** at the top of Swagger UI and paste only the token. Swagger adds the `Bearer` prefix automatically.
+6. Call `GET /api/Chat/messages` or `POST /api/Chat/create`.
+
+Swagger marks only protected operations with a lock icon. Validation, authentication, quota, and unexpected failures are documented with their ProblemDetails response contracts.
+
 Stop the stack without deleting SQL Server data:
 
 ```bash

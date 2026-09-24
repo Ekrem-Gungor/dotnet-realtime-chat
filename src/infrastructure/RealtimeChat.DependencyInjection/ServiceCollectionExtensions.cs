@@ -116,20 +116,8 @@ public static class ServiceCollectionExtensions
                 {
                     OnMessageReceived = context =>
                     {
-                        string? hubToken = context.Request.Query["access_token"];
-
-                        if (!string.IsNullOrWhiteSpace(hubToken)
-                            && context.HttpContext.Request.Path.StartsWithSegments(
-                                JwtAuthenticationDefaults.HubPath))
-                        {
-                            context.Token = hubToken;
-                        }
-                        else if (context.Request.Cookies.TryGetValue(
-                                     JwtAuthenticationDefaults.AccessTokenCookieName,
-                                     out string? cookieToken))
-                        {
-                            context.Token = cookieToken;
-                        }
+                        context.Token = JwtBearerTokenResolver
+                            .ResolveFallbackToken(context.Request);
 
                         return Task.CompletedTask;
                     }
