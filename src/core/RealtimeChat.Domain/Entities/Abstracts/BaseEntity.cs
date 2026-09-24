@@ -11,7 +11,7 @@ namespace RealtimeChat.Domain.Entities.Abstracts
     {
         public BaseEntity()
         {
-            CreatedDate = DateTime.Now;
+            CreatedDate = DateTime.UtcNow;
             DataStatus = DataStatus.Inserted;
             ActiveStatus = ActiveStatus.Active;
         }

@@ -14,11 +14,12 @@ The current repository contains the backend API. A production-ready web client i
 - JWT bearer authentication for HTTP and SignalR connections
 - ASP.NET Core Identity with role and profile models
 - Redis sorted sets for recent message storage
-- Redis-backed per-user message quota
+- Atomic Redis-backed per-user message quota
 - SQL Server persistence with Entity Framework Core
 - MediatR commands, queries, and notifications
 - Onion-style separation between domain, application, infrastructure, and presentation
-- Autofac-based dependency registration
+- Single composition root with built-in ASP.NET Core dependency injection
+- Centralized target framework and NuGet package versions
 - Swagger in the Development environment
 
 ## Architecture
@@ -40,9 +41,9 @@ flowchart TB
 1. The client authenticates through `POST /api/auth/login`.
 2. The API returns a signed JWT containing the user identifier, username, email, and roles.
 3. HTTP chat operations send the token as a bearer credential.
-4. SignalR uses the `access_token` query parameter during the `/chatHub` handshake.
+4. SignalR uses the `access_token` query parameter during the `/chatHub` handshake; browser clients can also use the HTTP-only access-token cookie.
 5. The server derives the sender identity from the authenticated principal rather than trusting a client-supplied username.
-6. Message quota is checked and consumed in Redis.
+6. Message quota is initialized and consumed atomically in Redis.
 7. The message is stored in a Redis sorted set and published through a MediatR notification.
 8. The SignalR event handler broadcasts the result to connected clients.
 
@@ -65,13 +66,13 @@ src/
 
 ## Technology Stack
 
-`C#` · `.NET 8` · `ASP.NET Core Web API` · `SignalR` · `Entity Framework Core` · `ASP.NET Core Identity` · `SQL Server` · `Redis` · `MediatR` · `Autofac` · `AutoMapper` · `JWT` · `Swagger`
+`C#` · `.NET 10` · `ASP.NET Core Web API` · `SignalR` · `Entity Framework Core` · `ASP.NET Core Identity` · `SQL Server` · `Redis` · `MediatR` · `JWT` · `Swagger`
 
 ## Local Setup
 
 ### Prerequisites
 
-- .NET 8 SDK
+- .NET 10 SDK
 - SQL Server
 - Redis
 - EF Core CLI (`dotnet-ef`)
@@ -85,7 +86,7 @@ cp src/presentation/webapi/RealtimeChat.Api/appsettings.example.json \
    src/presentation/webapi/RealtimeChat.Api/appsettings.Development.json
 ```
 
-Then replace the example JWT secret and adjust the SQL Server, Redis, and CORS values for your environment. Local configuration files are ignored by Git.
+Then replace the example JWT secret and adjust the SQL Server, Redis, and CORS values for your environment. Local configuration files are ignored by Git. Deployment settings can use standard ASP.NET Core environment variables such as `ConnectionStrings__RealtimeChatConnection`, `JwtSettings__SecretKey`, `Redis`, and `UICORSPath`.
 
 Never commit real connection strings, JWT signing keys, Redis credentials, or production origins.
 
@@ -109,6 +110,8 @@ Repository seed identities use reserved `example.invalid` addresses and do not c
 
 Protected chat operations and the SignalR hub require an authenticated user. The hub accepts its bearer token through the standard SignalR `access_token` handshake parameter.
 
+The application validates credentials without creating an Identity application cookie. JWT creation stays in the application flow, while the API owns the HTTP-only cookie response.
+
 ## API Surface
 
 | Type | Route / Method | Purpose |
@@ -129,13 +132,14 @@ Protected chat operations and the SignalR hub require an authenticated user. The
 - Sender and join identity are derived from JWT claims, not trusted client input.
 - Local configuration and environment files are excluded from source control.
 - The previous push-to-production workflow was replaced with a build-only CI workflow.
+- Quota validation and decrement run as one Redis operation to avoid concurrent double-spending.
 
 ## Current Limitations
 
 - No registration or password-bootstrap endpoint is provided.
 - No automated test suite is currently included.
 - Redis and SQL Server must be provisioned separately.
-- Message quota is implemented as an application feature, not a distributed abuse-prevention system.
+- Message quota is a fixed-window Redis control, not a complete abuse-prevention system.
 - Online status is stored in SQL and may need reconciliation after abnormal disconnects.
 - The repository does not include a production web client.
 - Production deployment, secret rotation, rate limiting, observability, and load testing require additional work.

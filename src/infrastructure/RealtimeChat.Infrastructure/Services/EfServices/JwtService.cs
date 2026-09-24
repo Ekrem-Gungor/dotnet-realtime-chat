@@ -28,13 +28,20 @@ namespace RealtimeChat.Infrastructure.Services.EfServices
 
         public async Task<TokenResponseDto> GenerateToken(string userId)
         {
-            AppUser user = await _userManager.FindByIdAsync(userId);
-            if (user == null) throw new ArgumentException("User not found");
+            AppUser? user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+                throw new ArgumentException("User not found.", nameof(userId));
+
+            string userName = user.UserName
+                ?? throw new InvalidOperationException("User name is missing.");
+            string email = user.Email
+                ?? throw new InvalidOperationException("User email is missing.");
+
             List<Claim> claims = new()
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, userName),
+                new Claim(ClaimTypes.Email, email),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
@@ -50,7 +57,7 @@ namespace RealtimeChat.Infrastructure.Services.EfServices
                 issuer: _jwtSetting.Issuer,
                 audience: _jwtSetting.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(expireMinutes),
+                expires: DateTime.UtcNow.AddMinutes(expireMinutes),
                 signingCredentials: creds
             );
 

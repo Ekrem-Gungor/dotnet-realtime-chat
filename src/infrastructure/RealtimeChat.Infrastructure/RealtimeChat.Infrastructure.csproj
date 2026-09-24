@@ -1,20 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="15.0.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\core\RealtimeChat.Application\RealtimeChat.Application.csproj" />
     <ProjectReference Include="..\..\core\RealtimeChat.Common\RealtimeChat.Common.csproj" />
+    <ProjectReference Include="..\..\core\RealtimeChat.Contracts\RealtimeChat.Contracts.csproj" />
+    <ProjectReference Include="..\..\core\RealtimeChat.Domain\RealtimeChat.Domain.csproj" />
   </ItemGroup>
 
 </Project>

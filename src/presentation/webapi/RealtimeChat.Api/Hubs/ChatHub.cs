@@ -52,7 +52,7 @@ namespace RealtimeChat.Api.Hubs
             await _mediatR.Send(new SetUserOnlineStatusCommand
             {
                 UserId = Convert.ToInt32(Context.UserIdentifier),
-                LastLogin = DateTime.Now,
+                LastLogin = DateTime.UtcNow,
                 IsOnline = true
             });
             await base.OnConnectedAsync();
@@ -63,7 +63,7 @@ namespace RealtimeChat.Api.Hubs
             await _mediatR.Send(new SetUserOnlineStatusCommand
             {
                 UserId = Convert.ToInt32(Context.UserIdentifier),
-                LastLogout = DateTime.Now,
+                LastLogout = DateTime.UtcNow,
                 IsOnline = false
             });
             await base.OnDisconnectedAsync(exception);

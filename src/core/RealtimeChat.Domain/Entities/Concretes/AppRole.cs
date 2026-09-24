@@ -13,7 +13,7 @@ namespace RealtimeChat.Domain.Entities.Concretes
     {
         public AppRole()
         {
-            CreatedDate = DateTime.Now;
+            CreatedDate = DateTime.UtcNow;
             DataStatus = DataStatus.Inserted;
             ActiveStatus = ActiveStatus.Active;
         }

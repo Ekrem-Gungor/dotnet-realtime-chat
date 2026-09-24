@@ -23,11 +23,10 @@ namespace RealtimeChat.Application.Features.Chats.Commands
             SystemMessageDto systemMessage = new()
             {
                 JoinedUserName = request.JoinedUserName,
-                SendAt = DateTime.Now
+                SendAt = DateTime.UtcNow
             };
-            // Burada loglama işlemi yapılabilir.
 
-            await _mediator.Publish(new SystemMessageCreateEvent(systemMessage));
+            await _mediator.Publish(new SystemMessageCreateEvent(systemMessage), cancellationToken);
             return systemMessage;
         }
     }
