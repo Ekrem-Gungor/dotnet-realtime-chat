@@ -9,6 +9,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__RealtimeChatConnection: Server=sqlserver,1433;Database=RealtimeChat;User Id=sa;Password=${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;
       Database__ApplyMigrations: "true"
+      DemoIdentity__Enabled: "true"
+      DemoIdentity__UserName: ${DEMO_USER_NAME:-realtime.demo}
+      DemoIdentity__Email: ${DEMO_USER_EMAIL:-realtime.demo@example.invalid}
+      DemoIdentity__Password: ${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD in .env}
       JwtSettings__Issuer: RealtimeChat.Api
       JwtSettings__Audience: RealtimeChat.Client
       JwtSettings__SecretKey: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}

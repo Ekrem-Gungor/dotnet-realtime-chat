@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealtimeChat.Application.Features.Auths.Commands;
 using RealtimeChat.Application.Features.Auths.Dtos.Response;
 using RealtimeChat.Domain.Entities.Concretes;
 using RealtimeChat.Persistence.ContextClasses;
+using RealtimeChat.Tests.Infrastructure;
 
 namespace RealtimeChat.Tests.Application;
 
@@ -14,7 +14,7 @@ public sealed class LoginUserCommandHandlerTests
     [Fact]
     public async Task Handle_WithValidPassword_ReturnsUserWithoutCreatingCookie()
     {
-        await using ServiceProvider provider = CreateProvider();
+        await using ServiceProvider provider = IdentityTestServices.CreateProvider();
         await provider.GetRequiredService<RealtimeChatDbContext>().Database.EnsureCreatedAsync();
 
         UserManager<AppUser> userManager = provider.GetRequiredService<UserManager<AppUser>>();
@@ -40,7 +40,7 @@ public sealed class LoginUserCommandHandlerTests
     [Fact]
     public async Task Handle_WithInvalidPassword_ThrowsUnauthorizedAccessException()
     {
-        await using ServiceProvider provider = CreateProvider();
+        await using ServiceProvider provider = IdentityTestServices.CreateProvider();
         await provider.GetRequiredService<RealtimeChatDbContext>().Database.EnsureCreatedAsync();
 
         UserManager<AppUser> userManager = provider.GetRequiredService<UserManager<AppUser>>();
@@ -55,32 +55,6 @@ public sealed class LoginUserCommandHandlerTests
                 Password = "Wrong_password1!"
             },
             CancellationToken.None));
-    }
-
-    private static ServiceProvider CreateProvider()
-    {
-        ServiceCollection services = new();
-        services.AddLogging();
-        services.AddAuthentication();
-        services.AddHttpContextAccessor();
-        services.AddDbContext<RealtimeChatDbContext>(options =>
-            options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
-
-        services
-            .AddIdentityCore<AppUser>(options =>
-            {
-                options.SignIn.RequireConfirmedEmail = true;
-                options.Password.RequiredLength = 8;
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
-            })
-            .AddRoles<AppRole>()
-            .AddSignInManager()
-            .AddEntityFrameworkStores<RealtimeChatDbContext>();
-
-        return services.BuildServiceProvider();
     }
 
     private static async Task<AppUser> CreateUserAsync(UserManager<AppUser> userManager)

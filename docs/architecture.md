@@ -48,6 +48,10 @@ The solution uses the built-in ASP.NET Core container. `AddRealtimeChat` is the 
 
 Automatic migrations are opt-in and restricted to the `Development` environment. Docker Compose enables them for the local stack; production environments must run migrations as an explicit deployment step.
 
+### Demo identity
+
+The local demo identity is configured through environment variables and created idempotently after migrations. The initializer is disabled by default and fails fast if it is enabled outside `Development`.
+
 ## Known Follow-ups
 
 - Expand authentication and Redis coverage beyond the critical baseline scenarios.

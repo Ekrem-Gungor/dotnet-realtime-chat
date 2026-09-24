@@ -82,6 +82,13 @@ docker compose ps
 
 The API is available at `http://localhost:5258`, Swagger at `/swagger`, and the liveness endpoint at `/health`. Database migrations run automatically only in the Compose `Development` environment.
 
+Compose also creates one local demo identity from the values in `.env`:
+
+- Username: `DEMO_USER_NAME`
+- Password: `DEMO_USER_PASSWORD`
+
+The example values are intended only for the local disposable environment. Demo identity initialization is opt-in and the application refuses to run it outside `Development`.
+
 Stop the stack without deleting SQL Server data:
 
 ```bash
@@ -140,7 +147,7 @@ Set `TEST_REDIS_CONNECTION` to use a different isolated Redis instance. CI provi
 
 ## Authentication Note
 
-Repository seed identities use reserved `example.invalid` addresses and do not contain usable passwords. Create development credentials locally rather than placing shared demo passwords in source control.
+Repository seed identities use reserved `example.invalid` addresses and do not contain usable passwords. The Docker workflow creates a separate local demo identity from `.env`; production environments must keep `DemoIdentity:Enabled` disabled.
 
 Protected chat operations and the SignalR hub require an authenticated user. The hub accepts its bearer token through the standard SignalR `access_token` handshake parameter.
 
