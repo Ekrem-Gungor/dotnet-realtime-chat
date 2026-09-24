@@ -1,10 +1,10 @@
-# DevBudy Live Chat API
+# RealtimeChat
 
 > A real-time chat backend built with ASP.NET Core, SignalR, Redis, SQL Server, MediatR, and ASP.NET Core Identity.
 
 ## Overview
 
-DevBudy is an educational backend project focused on real-time messaging and layered .NET application design. It exposes HTTP endpoints for authentication and message history, while SignalR distributes chat events and online-user updates to connected clients.
+RealtimeChat is a portfolio-oriented backend project focused on real-time messaging and layered .NET application design. It exposes HTTP endpoints for authentication and message history, while SignalR distributes chat events and online-user updates to connected clients.
 
 The current repository contains the backend API. A production-ready web client is not included.
 
@@ -51,16 +51,16 @@ flowchart TB
 ```text
 src/
 ├── core/
-│   ├── DevBudy.DOMAIN
-│   ├── DevBudy.APPLICATION
-│   ├── DevBudy.CONTRACT
-│   └── DevBudy.COMMON
+│   ├── RealtimeChat.Domain
+│   ├── RealtimeChat.Application
+│   ├── RealtimeChat.Contracts
+│   └── RealtimeChat.Common
 ├── infrastructure/
-│   ├── DevBudy.PERSISTANCE
-│   ├── DevBudy.INNERINFRASTRUCTURE
-│   └── DevBudy.DEPENDENCYRESOLVER
+│   ├── RealtimeChat.Persistence
+│   ├── RealtimeChat.Infrastructure
+│   └── RealtimeChat.DependencyInjection
 └── presentation/
-    └── webapi/DevBudy.API
+    └── webapi/RealtimeChat.Api
 ```
 
 ## Technology Stack
@@ -81,8 +81,8 @@ src/
 Copy the safe example file:
 
 ```bash
-cp src/presentation/webapi/DevBudy.API/appsettings.example.json \
-   src/presentation/webapi/DevBudy.API/appsettings.Development.json
+cp src/presentation/webapi/RealtimeChat.Api/appsettings.example.json \
+   src/presentation/webapi/RealtimeChat.Api/appsettings.Development.json
 ```
 
 Then replace the example JWT secret and adjust the SQL Server, Redis, and CORS values for your environment. Local configuration files are ignored by Git.
@@ -92,13 +92,13 @@ Never commit real connection strings, JWT signing keys, Redis credentials, or pr
 ### Database and API
 
 ```bash
-dotnet restore SignalRLiveChatApp.sln
+dotnet restore RealtimeChat.sln
 
 dotnet ef database update \
-  --project src/infrastructure/DevBudy.PERSISTANCE \
-  --startup-project src/presentation/webapi/DevBudy.API
+  --project src/infrastructure/RealtimeChat.Persistence \
+  --startup-project src/presentation/webapi/RealtimeChat.Api
 
-dotnet run --project src/presentation/webapi/DevBudy.API
+dotnet run --project src/presentation/webapi/RealtimeChat.Api
 ```
 
 The default HTTP launch profile listens on `http://localhost:5258`. Swagger is available at `/swagger` in Development.
