@@ -1,0 +1,6 @@
+@DevBudy.API_HostAddress = http://localhost:5258
+
+GET {{DevBudy.API_HostAddress}}
+Accept: application/json
+
+###
