@@ -8,7 +8,7 @@ namespace RealtimeChat.Application.Features.Auths.Dtos.Response
 {
     public class TokenResponseDto
     {
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
         public DateTime ExpiresDate { get; set; }
     }
 }

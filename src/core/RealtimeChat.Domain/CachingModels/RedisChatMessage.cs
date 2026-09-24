@@ -12,13 +12,13 @@ namespace RealtimeChat.Domain.CachingModels
         public RedisChatMessage()
         {
             MessageType = MessageType.Text;
-            CreateAt = DateTime.Now;
+            CreatedAt = DateTime.UtcNow;
         }
 
         public Guid MessageId { get; set; }
-        public string Message { get; set; }
-        public string SenderUserName { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string SenderUserName { get; set; } = string.Empty;
         public MessageType MessageType { get; set; }
-        public DateTime CreateAt { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

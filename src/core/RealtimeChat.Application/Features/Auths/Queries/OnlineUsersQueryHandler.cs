@@ -25,7 +25,7 @@ namespace RealtimeChat.Application.Features.Auths.Queries
                 .Select(user => new ConnectedUserDto
                 {
                     Id = user.Id,
-                    UserName = user.UserName,
+                    UserName = user.UserName ?? string.Empty,
                     IsOnline = user.IsOnline
                 }).ToListAsync();
             return connectedUsers;

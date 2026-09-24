@@ -20,17 +20,23 @@ namespace RealtimeChat.Application.Features.AppUsers.Commands
         }
         public async Task<bool> Handle(SetUserOnlineStatusCommand request, CancellationToken cancellationToken)
         {
-            AppUser appUser = await _userManager.FindByIdAsync(request.UserId.ToString());
+            AppUser? appUser = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (appUser == null)
             {
                 throw new ArgumentException("User not found.", nameof(request.UserId));
             }
             appUser.IsOnline = request.IsOnline;
-            appUser.LastLogin = request.LastLogin;
-            appUser.LastLogout = request.LastLogout;
+            if (request.LastLogin.HasValue)
+                appUser.LastLogin = request.LastLogin.Value;
+
+            if (request.LastLogout.HasValue)
+                appUser.LastLogout = request.LastLogout.Value;
+
             IdentityResult result = await _userManager.UpdateAsync(appUser);
-            if (result.Succeeded) return true;
-            else throw new Exception("Durum güncellemesi başarısız oldu!");
+            if (result.Succeeded)
+                return true;
+
+            throw new InvalidOperationException("Kullanıcı durumu güncellenemedi.");
 
         }
     }

@@ -1,6 +1,5 @@
 ﻿using RealtimeChat.Application.Events.ChatMessages;
 using RealtimeChat.Application.Features.Chats.Dtos;
-using RealtimeChat.Contracts.Repositories.EFRepositories;
 using RealtimeChat.Contracts.Repositories.RedisRepositories;
 using RealtimeChat.Domain.CachingModels;
 using RealtimeChat.Domain.Entities.Concretes;
@@ -35,41 +34,32 @@ namespace RealtimeChat.Application.Features.Chats.Commands
             {
                 throw new ArgumentException("Message cannot be empty.", nameof(request.Message));
             }
-            AppUser senderUser = await _userManager.FindByNameAsync(request.SenderUserName);
-            var hasQuota = await _quotaRepo.GetQuotaAsync(senderUser.Id.ToString());
-            if (hasQuota.ReaminingMessage > 0 && await _quotaRepo.TryConsumeAsync(senderUser.Id.ToString()))
+            AppUser senderUser = await _userManager.FindByNameAsync(request.SenderUserName)
+                ?? throw new UnauthorizedAccessException("Authenticated user could not be found.");
+
+            if (!await _quotaRepo.TryConsumeAsync(senderUser.Id.ToString()))
+                return "Yeterli mesaj kotanız kalmamıştır.";
+
+            RedisChatMessage redisChatMessage = new()
             {
-                RedisChatMessage redisChatMsg = new()
-                {
-                    MessageId = Guid.NewGuid(),
-                    Message = request.Message,
-                    SenderUserName = request.SenderUserName
-                };
+                MessageId = Guid.NewGuid(),
+                Message = request.Message,
+                SenderUserName = request.SenderUserName
+            };
 
-                ChatMessageDto chatMessageDto = new()
-                {
-                    Id = Guid.NewGuid(),
-                    SenderUserId = senderUser.Id,
-                    SenderUserName = redisChatMsg.SenderUserName,
-                    Message = redisChatMsg.Message,
-                    SendAt = redisChatMsg.CreateAt
-                };
+            ChatMessageDto chatMessageDto = new()
+            {
+                Id = redisChatMessage.MessageId,
+                SenderUserId = senderUser.Id,
+                SenderUserName = redisChatMessage.SenderUserName,
+                Message = redisChatMessage.Message,
+                SendAt = redisChatMessage.CreatedAt
+            };
 
-                long score = DateTimeOffset.Now.ToUnixTimeSeconds();
+            await _msgRedisRepo.AddMessageAsync(redisChatMessage);
+            await _mediator.Publish(new ChatMessageCreatedEvent(chatMessageDto), cancellationToken);
 
-                await _msgRedisRepo.AddMessageToSortedSetAsync($"message:{chatMessageDto.Id}", redisChatMsg, score);
-                await _mediator.Publish(new ChatMessageCreatedEvent(chatMessageDto));
-                return "Mesaj gönderildi.";
-            }
-
-            //ChatMessage chatMessage = new()
-            //{
-            //    SenderID = senderUser.Id,
-            //    Message = request.Message
-            //};
-            //await _chatMsgRepo.CreateAsync(chatMessage);
-
-            return "Yeterli mesaj kotanız kalmamıştır.";
+            return "Mesaj gönderildi.";
         }
     }
 }
