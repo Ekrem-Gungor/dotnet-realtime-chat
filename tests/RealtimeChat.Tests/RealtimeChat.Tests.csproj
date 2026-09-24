@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\core\RealtimeChat.Application\RealtimeChat.Application.csproj" />
+    <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.DependencyInjection\RealtimeChat.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.Infrastructure\RealtimeChat.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.Persistence\RealtimeChat.Persistence.csproj" />
   </ItemGroup>

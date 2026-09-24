@@ -31,6 +31,7 @@ builder.Services.AddCors(options =>
 WebApplication app = builder.Build();
 
 await app.ApplyDatabaseMigrationsAsync();
+await app.BootstrapDemoIdentityAsync();
 
 if (app.Environment.IsDevelopment())
 {

@@ -11,6 +11,7 @@ using RealtimeChat.Common.Tools.JwtSettings;
 using RealtimeChat.Contracts.Repositories.EFRepositories;
 using RealtimeChat.Contracts.Repositories.RedisRepositories;
 using RealtimeChat.DependencyInjection.Authentication;
+using RealtimeChat.DependencyInjection.DemoIdentity;
 using RealtimeChat.Domain.Entities.Concretes;
 using RealtimeChat.Infrastructure.Redis.Repositories;
 using RealtimeChat.Infrastructure.Services.EfServices;
@@ -35,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddApplicationServices(additionalHandlerAssemblies);
         services.AddRepositories();
         services.AddRedis(configuration);
+        services.AddDemoIdentity(configuration);
 
         return services;
     }
@@ -171,5 +173,14 @@ public static class ServiceCollectionExtensions
         // ConnectionMultiplexer eş zamanlı kullanıma uygun; her istek için bağlantı açılmaması gerekir.
         services.AddSingleton<IConnectionMultiplexer>(_ =>
             ConnectionMultiplexer.Connect(redisConnection));
+    }
+
+    private static void AddDemoIdentity(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<DemoIdentityOptions>(
+            configuration.GetSection(DemoIdentityOptions.SectionName));
+        services.AddScoped<DevelopmentDemoIdentityInitializer>();
     }
 }
