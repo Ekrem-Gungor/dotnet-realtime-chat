@@ -70,6 +70,28 @@ src/
 
 ## Local Setup
 
+### Docker Compose
+
+The quickest development setup starts the API, SQL Server, and Redis together:
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+```
+
+The API is available at `http://localhost:5258`, Swagger at `/swagger`, and the liveness endpoint at `/health`. Database migrations run automatically only in the Compose `Development` environment.
+
+Stop the stack without deleting SQL Server data:
+
+```bash
+docker compose down
+```
+
+To remove the local database volume as well, run `docker compose down --volumes` intentionally.
+
+### Manual Setup
+
 ### Prerequisites
 
 - .NET 10 SDK
@@ -111,6 +133,7 @@ The test suite includes application tests and Redis-backed integration tests. Re
 ```bash
 docker run --rm -d --name realtimechat-test-redis -p 6379:6379 redis:7-alpine
 dotnet test RealtimeChat.sln --configuration Release
+docker stop realtimechat-test-redis
 ```
 
 Set `TEST_REDIS_CONNECTION` to use a different isolated Redis instance. CI provisions its own Redis service automatically.
@@ -130,6 +153,7 @@ The application validates credentials without creating an Identity application c
 | HTTP | `POST /api/auth/login` | Authenticate and generate a JWT |
 | HTTP | `POST /api/chat/create` | Create a message as the authenticated user |
 | HTTP | `GET /api/chat/messages` | Read recent Redis-backed messages |
+| HTTP | `GET /health` | Liveness check for local and hosted environments |
 | SignalR | `/chatHub` | Authenticated real-time connection |
 | Hub | `SendMessage` | Validate quota, persist, and broadcast a message |
 | Hub | `Join` | Broadcast a system join event |
@@ -142,14 +166,14 @@ The application validates credentials without creating an Identity application c
 - Chat HTTP endpoints and `ChatHub` require authorization.
 - Sender and join identity are derived from JWT claims, not trusted client input.
 - Local configuration and environment files are excluded from source control.
-- The previous push-to-production workflow was replaced with a build-only CI workflow.
+- The previous push-to-production workflow was replaced with restore, build, test, Compose validation, and container-build checks.
 - Quota validation and decrement run as one Redis operation to avoid concurrent double-spending.
 
 ## Current Limitations
 
 - No registration or password-bootstrap endpoint is provided.
 - The initial automated suite covers critical authentication and Redis flows; broader API and SQL integration coverage is still planned.
-- Redis and SQL Server must be provisioned separately.
+- Docker Compose covers local infrastructure; production infrastructure and deployment remain environment-specific.
 - Message quota is a fixed-window Redis control, not a complete abuse-prevention system.
 - Online status is stored in SQL and may need reconciliation after abnormal disconnects.
 - The repository does not include a production web client.

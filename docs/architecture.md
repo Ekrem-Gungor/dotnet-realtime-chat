@@ -44,6 +44,10 @@ The key format is `chat:quota:{userId}`. A Lua script lazily creates the one-hou
 
 The solution uses the built-in ASP.NET Core container. `AddRealtimeChat` is the only composition entry point and scans both application handlers and API notification handlers for MediatR registrations.
 
+### Database migrations
+
+Automatic migrations are opt-in and restricted to the `Development` environment. Docker Compose enables them for the local stack; production environments must run migrations as an explicit deployment step.
+
 ## Known Follow-ups
 
 - Expand authentication and Redis coverage beyond the critical baseline scenarios.
