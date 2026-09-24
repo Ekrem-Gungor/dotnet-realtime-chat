@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -5,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using RealtimeChat.Application.Common.Behaviors;
 using RealtimeChat.Application.Features.Auths.Commands;
 using RealtimeChat.Application.Services.EFServices;
 using RealtimeChat.Common.Tools.JwtSettings;
@@ -137,18 +139,23 @@ public static class ServiceCollectionExtensions
         services.AddAuthorization();
     }
 
-    private static void AddApplicationServices(
-        this IServiceCollection services,
-        Assembly[] additionalHandlerAssemblies)
+    private static void AddApplicationServices(this IServiceCollection services, Assembly[] additionalHandlerAssemblies)
     {
+        Assembly applicationAssembly = typeof(LoginUserCommandHandler).Assembly;
+
         Assembly[] handlerAssemblies =
         [
-            typeof(LoginUserCommandHandler).Assembly,
+            applicationAssembly,
             .. additionalHandlerAssemblies
         ];
 
+        services.AddValidatorsFromAssembly(applicationAssembly);
+
         services.AddMediatR(config =>
-            config.RegisterServicesFromAssemblies(handlerAssemblies));
+        {
+            config.RegisterServicesFromAssemblies(handlerAssemblies);
+            config.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        });
 
         services.AddScoped<IJwtService, JwtService>();
     }

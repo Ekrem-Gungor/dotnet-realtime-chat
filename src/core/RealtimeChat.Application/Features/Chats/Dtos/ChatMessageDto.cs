@@ -10,7 +10,7 @@ namespace RealtimeChat.Application.Features.Chats.Dtos
     {
         public Guid Id { get; set; }
         public int? SenderUserId { get; set; }
-        public string SenderUserName { get; set; }
-        public string Message { get; set; }
+        public string SenderUserName { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

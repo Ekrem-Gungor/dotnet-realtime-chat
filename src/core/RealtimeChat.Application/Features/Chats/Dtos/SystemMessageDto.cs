@@ -15,6 +15,6 @@ namespace RealtimeChat.Application.Features.Chats.Dtos
         }
         public string SenderUserName { get; }
         public string Message { get; }
-        public string JoinedUserName { get; set; }
+        public string JoinedUserName { get; set; } = string.Empty;
     }
 }

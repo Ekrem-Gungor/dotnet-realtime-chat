@@ -20,34 +20,25 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<IActionResult> Login(
+    public async Task<ActionResult<TokenResponseDto>> Login(
         [FromBody] LoginUserCommand command,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            LoginResponseDto loginResult = await _mediator.Send(command, cancellationToken);
-            TokenResponseDto tokenResult = await _mediator.Send(
-                new GenerateTokenCommand { UserId = loginResult.UserId },
-                cancellationToken);
+        LoginResponseDto loginResult = await _mediator.Send(command, cancellationToken);
+        TokenResponseDto tokenResult = await _mediator.Send(new GenerateTokenCommand { UserId = loginResult.UserId }, cancellationToken);
 
-            Response.Cookies.Append(
-                JwtAuthenticationDefaults.AccessTokenCookieName,
-                tokenResult.Token,
-                new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = tokenResult.ExpiresDate,
-                    Path = "/"
-                });
+        Response.Cookies.Append(
+            JwtAuthenticationDefaults.AccessTokenCookieName,
+            tokenResult.Token,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Strict,
+                Expires = tokenResult.ExpiresDate,
+                Path = "/"
+            });
 
-            return Ok(tokenResult);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new { message = "Invalid username or password." });
-        }
+        return Ok(tokenResult);
     }
 }
