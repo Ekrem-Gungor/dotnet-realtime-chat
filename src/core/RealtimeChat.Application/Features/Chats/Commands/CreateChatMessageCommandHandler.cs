@@ -1,10 +1,11 @@
-﻿using RealtimeChat.Application.Events.ChatMessages;
+﻿using MediatR;
+using Microsoft.AspNetCore.Identity;
+using RealtimeChat.Application.Common.Exceptions;
+using RealtimeChat.Application.Events.ChatMessages;
 using RealtimeChat.Application.Features.Chats.Dtos;
 using RealtimeChat.Contracts.Repositories.RedisRepositories;
 using RealtimeChat.Domain.CachingModels;
 using RealtimeChat.Domain.Entities.Concretes;
-using MediatR;
-using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,53 +14,51 @@ using System.Threading.Tasks;
 
 namespace RealtimeChat.Application.Features.Chats.Commands
 {
-    public class CreateChatMessageCommandHandler : IRequestHandler<CreateChatMessageCommand, string>
+    public sealed class CreateChatMessageCommandHandler : IRequestHandler<CreateChatMessageCommand, ChatMessageDto>
     {
-        private readonly IMessageRedisRepository _msgRedisRepo;
-        private readonly IMessageQuotaRepository _quotaRepo;
+        private readonly IMessageRedisRepository _messageRepository;
+        private readonly IMessageQuotaRepository _quotaRepository;
         private readonly UserManager<AppUser> _userManager;
-        private readonly IMediator _mediator;
+        private readonly IPublisher _publisher;
 
-        public CreateChatMessageCommandHandler(IMediator mediator, UserManager<AppUser> userManager, IMessageRedisRepository msgRedisRepo, IMessageQuotaRepository quotaRepo)
+        public CreateChatMessageCommandHandler(IPublisher publisher, UserManager<AppUser> userManager, IMessageRedisRepository messageRepository, IMessageQuotaRepository quotaRepository)
         {
+            _publisher = publisher;
             _userManager = userManager;
-            _mediator = mediator;
-            _msgRedisRepo = msgRedisRepo;
-            _quotaRepo = quotaRepo;
+            _messageRepository = messageRepository;
+            _quotaRepository = quotaRepository;
         }
 
-        public async Task<string> Handle(CreateChatMessageCommand request, CancellationToken cancellationToken)
+        public async Task<ChatMessageDto> Handle(CreateChatMessageCommand request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(request.Message) || string.IsNullOrEmpty(request.SenderUserName))
-            {
-                throw new ArgumentException("Message cannot be empty.", nameof(request.Message));
-            }
-            AppUser senderUser = await _userManager.FindByNameAsync(request.SenderUserName)
-                ?? throw new UnauthorizedAccessException("Authenticated user could not be found.");
+            AppUser senderUser = await _userManager.FindByNameAsync(request.SenderUserName) ?? throw new UnauthorizedAccessException("Authenticated user could not be found.");
 
-            if (!await _quotaRepo.TryConsumeAsync(senderUser.Id.ToString()))
-                return "Yeterli mesaj kotanız kalmamıştır.";
+            bool quotaConsumed = await _quotaRepository.TryConsumeAsync(senderUser.Id.ToString());
 
-            RedisChatMessage redisChatMessage = new()
+            if (!quotaConsumed)
+                throw new MessageQuotaExceededException();
+
+            RedisChatMessage redisMessage = new()
             {
                 MessageId = Guid.NewGuid(),
                 Message = request.Message,
                 SenderUserName = request.SenderUserName
             };
 
-            ChatMessageDto chatMessageDto = new()
+            ChatMessageDto response = new()
             {
-                Id = redisChatMessage.MessageId,
+                Id = redisMessage.MessageId,
                 SenderUserId = senderUser.Id,
-                SenderUserName = redisChatMessage.SenderUserName,
-                Message = redisChatMessage.Message,
-                SendAt = redisChatMessage.CreatedAt
+                SenderUserName = redisMessage.SenderUserName,
+                Message = redisMessage.Message,
+                SendAt = redisMessage.CreatedAt
             };
 
-            await _msgRedisRepo.AddMessageAsync(redisChatMessage);
-            await _mediator.Publish(new ChatMessageCreatedEvent(chatMessageDto), cancellationToken);
+            await _messageRepository.AddMessageAsync(redisMessage);
 
-            return "Mesaj gönderildi.";
+            await _publisher.Publish(new ChatMessageCreatedEvent(response), cancellationToken);
+
+            return response;
         }
     }
 }

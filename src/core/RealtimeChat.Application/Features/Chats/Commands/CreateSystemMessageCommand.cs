@@ -10,6 +10,6 @@ namespace RealtimeChat.Application.Features.Chats.Commands
 {
     public class CreateSystemMessageCommand : IRequest<SystemMessageDto>
     {
-        public string JoinedUserName { get; set; }
+        public string JoinedUserName { get; set; } = string.Empty;
     }
 }

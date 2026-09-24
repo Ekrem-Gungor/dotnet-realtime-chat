@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.DependencyInjection\RealtimeChat.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.Infrastructure\RealtimeChat.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\infrastructure\RealtimeChat.Persistence\RealtimeChat.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\presentation\webapi\RealtimeChat.Api\RealtimeChat.Api.csproj" />
   </ItemGroup>
 
 </Project>

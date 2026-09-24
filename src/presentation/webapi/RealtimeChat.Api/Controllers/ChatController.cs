@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealtimeChat.Application.Features.Chats.Commands;
+using RealtimeChat.Application.Features.Chats.Dtos;
 using RealtimeChat.Application.Features.Chats.Queries;
 
 namespace RealtimeChat.Api.Controllers;
@@ -19,14 +20,13 @@ public sealed class ChatController : ControllerBase
     }
 
     [HttpPost("create")]
-    public async Task<IActionResult> CreateChatMessage(
+    public async Task<ActionResult<ChatMessageDto>> CreateChatMessage(
         CreateChatMessageCommand command,
         CancellationToken cancellationToken)
     {
-        command.SenderUserName = User.Identity?.Name
-            ?? throw new UnauthorizedAccessException("Authenticated user name is missing.");
+        command.SenderUserName = User.Identity?.Name ?? throw new UnauthorizedAccessException("Authenticated user name is missing.");
 
-        string result = await _mediator.Send(command, cancellationToken);
+        ChatMessageDto result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
     }
 
