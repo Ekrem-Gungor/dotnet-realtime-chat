@@ -1,5 +1,6 @@
 using RealtimeChat.Api.ErrorHandling;
 using RealtimeChat.Api.Hubs;
+using RealtimeChat.Api.OpenApi;
 using RealtimeChat.DependencyInjection;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -16,8 +17,7 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddRealtimeChatSwagger(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 builder.Services.AddRealtimeChat(builder.Configuration, typeof(Program).Assembly);
@@ -48,7 +48,12 @@ await app.BootstrapDemoIdentityAsync();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Talkio API v1");
+        options.DocumentTitle = "Talkio API";
+        options.DisplayRequestDuration();
+    });
 }
 
 app.UseExceptionHandler();
