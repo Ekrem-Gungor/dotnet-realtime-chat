@@ -24,8 +24,12 @@ The client currently provides cookie-based authentication, protected routing, se
 - RFC Problem Details error handling
 - Responsive authenticated application shell
 - Route and login-flow tests
+- Recent message-history loading
+- HTTP-based message creation
+- Loading, empty, validation, quota, and connection error states
+- Enter-to-send and Shift+Enter multiline input
 
-Real-time SignalR messaging will be introduced in the next implementation stage.
+HTTP messaging is available. Real-time SignalR delivery and online-user presence will be introduced in the next implementation stage.
 
 ## Prerequisites
 
@@ -125,10 +129,10 @@ On application startup, the client requests the current authenticated session:
 
 ## Routes
 
-| Route    | Access              | Purpose                         |
-| -------- | ------------------- | ------------------------------- |
-| `/login` | Anonymous users     | Authenticate with the API       |
-| `/chat`  | Authenticated users | Authenticated application shell |
+| Route    | Access              | Purpose                            |
+| -------- | ------------------- | ---------------------------------- |
+| `/login` | Anonymous users     | Authenticate with the API          |
+| `/chat`  | Authenticated users | Authenticated HTTP chat experience |
 
 ## CI
 

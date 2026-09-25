@@ -8,7 +8,7 @@ Siglora is the product-facing name of the RealtimeChat project.
 
 The repository demonstrates a layered .NET backend, Redis-backed messaging controls, JWT authentication, standardized API errors, and a React web client with protected routing and session restoration.
 
-The web client currently includes the authentication foundation and authenticated application shell. Real-time SignalR messaging in the browser is the next implementation stage.
+The web client currently supports authentication, HTTP-based message history, and message creation. Real-time SignalR delivery and online-user presence are the next implementation stage.
 
 ## Highlights
 
@@ -36,7 +36,11 @@ The web client currently includes the authentication foundation and authenticate
 - Login, logout, and session restoration
 - Credentialed API requests
 - Centralized HTTP and Problem Details handling
-- Responsive authenticated application shell
+- Responsive authenticated chat interface
+- Recent Redis-backed message history
+- HTTP-based message creation
+- Loading, empty, validation, authentication, quota, and general error states
+- Enter-to-send and Shift+Enter multiline input
 - Vitest and Testing Library coverage
 
 ### Delivery
@@ -230,10 +234,13 @@ The backend must be running at the address configured by `VITE_API_BASE_URL`.
 3. Open `http://localhost:5173/login`.
 4. Use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from the root `.env` file.
 5. Confirm that successful authentication redirects to `/chat`.
-6. Refresh the page to verify session restoration.
-7. Use the logout action to remove the session.
+6. Verify that recent messages are loaded from the API.
+7. Send a message using the button or the Enter key.
+8. Use Shift+Enter to create a multiline message.
+9. Refresh the page to verify session and message-history restoration.
+10. Use the logout action to remove the session.
 
-The current `/chat` route provides the authenticated application shell. Browser-based real-time messaging will be added in the next implementation stage.
+Messages created through the HTTP API are added to the local message list immediately. Real-time delivery from other connected clients will be added with the SignalR integration.
 
 ## Use Swagger Authentication
 
@@ -353,7 +360,7 @@ GitHub Actions runs two independent jobs for pushes and pull requests targeting 
 
 - Browser-based SignalR messaging is not implemented yet.
 - Registration and password-bootstrap endpoints are not provided.
-- The authenticated chat screen is currently an application shell.
+- Messages created by other clients require a refresh until the SignalR client is implemented.
 - Online-state reconciliation may be required after abnormal disconnections.
 - Docker Compose currently runs backend infrastructure, not the React development server.
 - Production deployment, secret rotation, observability, load testing, and broader integration coverage require additional work.

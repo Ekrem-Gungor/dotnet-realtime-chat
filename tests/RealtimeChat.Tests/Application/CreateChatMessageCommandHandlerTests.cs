@@ -94,7 +94,10 @@ public sealed class CreateChatMessageCommandHandlerTests
 
         Assert.NotNull(messageRepository.AddedMessage);
         Assert.Equal(response.Id, messageRepository.AddedMessage.MessageId);
+        Assert.Equal(response.SenderUserId, messageRepository.AddedMessage.SenderUserId);
+        Assert.Equal(response.SenderUserName, messageRepository.AddedMessage.SenderUserName);
         Assert.Equal(response.Message, messageRepository.AddedMessage.Message);
+        Assert.Equal(response.SendAt, messageRepository.AddedMessage.CreatedAt);
 
         ChatMessageCreatedEvent notification =
             Assert.IsType<ChatMessageCreatedEvent>(publisher.Notification);

@@ -41,6 +41,7 @@ namespace RealtimeChat.Application.Features.Chats.Commands
             RedisChatMessage redisMessage = new()
             {
                 MessageId = Guid.NewGuid(),
+                SenderUserId = senderUser.Id,
                 Message = request.Message,
                 SenderUserName = request.SenderUserName
             };
@@ -48,7 +49,7 @@ namespace RealtimeChat.Application.Features.Chats.Commands
             ChatMessageDto response = new()
             {
                 Id = redisMessage.MessageId,
-                SenderUserId = senderUser.Id,
+                SenderUserId = redisMessage.SenderUserId,
                 SenderUserName = redisMessage.SenderUserName,
                 Message = redisMessage.Message,
                 SendAt = redisMessage.CreatedAt
