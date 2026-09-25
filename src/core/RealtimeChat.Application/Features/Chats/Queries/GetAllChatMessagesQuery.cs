@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace RealtimeChat.Application.Features.Chats.Queries
 {
-    public class GetAllChatMessagesQuery : IRequest<List<RedisChatMessage>>
+    public class GetAllChatMessagesQuery : IRequest<List<ChatMessageDto>>
     {
 
     }

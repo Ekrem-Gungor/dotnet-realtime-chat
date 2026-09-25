@@ -6,10 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using RealtimeChat.Application.Features.Chats.Dtos;
 
 namespace RealtimeChat.Application.Features.Chats.Queries
 {
-    public class GetAllChatMessagesQueryHandler : IRequestHandler<GetAllChatMessagesQuery, List<RedisChatMessage>>
+    public class GetAllChatMessagesQueryHandler : IRequestHandler<GetAllChatMessagesQuery, List<ChatMessageDto>>
     {
         readonly IMessageRedisRepository _messageRedisRepo;
 
@@ -18,10 +19,19 @@ namespace RealtimeChat.Application.Features.Chats.Queries
             _messageRedisRepo = messageRedisRepo;
         }
 
-        public async Task<List<RedisChatMessage>> Handle(GetAllChatMessagesQuery request, CancellationToken cancellationToken)
+        public async Task<List<ChatMessageDto>> Handle(GetAllChatMessagesQuery request, CancellationToken cancellationToken)
         {
-            List<RedisChatMessage> result = await _messageRedisRepo.GetMessagesFromLastMinutesAsync(30);
-            return result;
+            List<RedisChatMessage> messages = await _messageRedisRepo.GetMessagesFromLastMinutesAsync(30);
+            List<ChatMessageDto> messageDto = messages.Select(message => new ChatMessageDto
+            {
+                Id = message.MessageId,
+                SenderUserId = message.SenderUserId,
+                SenderUserName = message.SenderUserName,
+                Message = message.Message,
+                SendAt = message.CreatedAt
+            }).ToList();
+
+            return messageDto;
         }
     }
 }

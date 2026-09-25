@@ -16,6 +16,7 @@ namespace RealtimeChat.Domain.CachingModels
         }
 
         public Guid MessageId { get; set; }
+        public int? SenderUserId { get; set; }
         public string Message { get; set; } = string.Empty;
         public string SenderUserName { get; set; } = string.Empty;
         public MessageType MessageType { get; set; }

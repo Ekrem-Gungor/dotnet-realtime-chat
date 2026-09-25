@@ -33,9 +33,7 @@ public sealed class ChatController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ChatMessageDto>> CreateChatMessage(
-        [FromBody] CreateChatMessageCommand command,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<ChatMessageDto>> CreateChatMessage([FromBody] CreateChatMessageCommand command, CancellationToken cancellationToken)
     {
         command.SenderUserName = User.Identity?.Name ?? throw new UnauthorizedAccessException("Authenticated user name is missing.");
 
@@ -47,16 +45,12 @@ public sealed class ChatController : ControllerBase
     /// Returns the recent Redis-backed message history.
     /// </summary>
     [HttpGet("messages")]
-    [ProducesResponseType(typeof(List<RedisChatMessage>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<ChatMessageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<List<RedisChatMessage>>> GetAllChatMessages(
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<List<ChatMessageDto>>> GetAllChatMessages(CancellationToken cancellationToken)
     {
-        List<RedisChatMessage> result = await _mediator.Send(
-            new GetAllChatMessagesQuery(),
-            cancellationToken);
-
+        List<ChatMessageDto> result = await _mediator.Send(new GetAllChatMessagesQuery(), cancellationToken);
         return Ok(result);
     }
 }
