@@ -21,7 +21,7 @@ public static class SwaggerServiceCollectionExtensions
                 DocumentName,
                 new OpenApiInfo
                 {
-                    Title = "Talkio API",
+                    Title = "Siglora API",
                     Version = DocumentName,
                     Description =
                         $"Authenticate with POST /api/Auth/login using the local demo user " +

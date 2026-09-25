@@ -1,0 +1,355 @@
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #e8edf7;
+  background: #080d1a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  color-scheme: dark;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(90, 76, 255, 0.18),
+      transparent 32rem
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(27, 186, 166, 0.12),
+      transparent 28rem
+    ),
+    #080d1a;
+}
+
+.app-placeholder {
+  width: min(100%, 42rem);
+  padding: clamp(2rem, 6vw, 4rem);
+  text-align: center;
+  background: rgba(17, 25, 45, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1.5rem;
+  box-shadow: 0 1.5rem 5rem rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(1rem);
+}
+
+.app-brand {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  color: #8b9cff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-placeholder h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.app-placeholder p {
+  max-width: 32rem;
+  margin: 1.5rem auto 0;
+  color: #a8b3c7;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.login-card {
+  width: min(100%, 30rem);
+  text-align: left;
+}
+
+.login-card .app-brand {
+  display: block;
+  text-align: center;
+}
+
+.login-card h1 {
+  text-align: center;
+}
+
+.login-card .login-subtitle {
+  margin: 1rem auto 0;
+  text-align: center;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.form-label {
+  color: #dce5f3;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.875rem;
+  color: #f8fafc;
+  background: rgba(8, 13, 26, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.75rem;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.form-input:focus {
+  border-color: #8b9cff;
+  box-shadow: 0 0 0 3px rgba(139, 156, 255, 0.16);
+}
+
+.form-input[aria-invalid="true"] {
+  border-color: #f87171;
+}
+
+.form-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.login-card .field-error {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.825rem;
+  line-height: 1.4;
+}
+
+.login-card .form-error {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  color: #fecaca;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background: rgba(127, 29, 29, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 0.75rem;
+}
+
+.submit-button {
+  min-height: 3rem;
+  margin-top: 0.25rem;
+  color: #ffffff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6d7cff, #8b5cf6);
+  border: 0;
+  border-radius: 0.75rem;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.submit-button:focus-visible {
+  outline: 3px solid rgba(139, 156, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.chat-shell {
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 2rem);
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(90, 76, 255, 0.14),
+      transparent 30rem
+    ),
+    #080d1a;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  background: rgba(17, 25, 45, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+}
+
+.chat-brand {
+  color: #f8fafc;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.chat-product-description {
+  margin: 0.2rem 0 0;
+  color: #8793a8;
+  font-size: 0.8rem;
+}
+
+.user-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-summary {
+  display: grid;
+  gap: 0.15rem;
+  text-align: right;
+}
+
+.user-summary strong {
+  color: #f8fafc;
+  font-size: 0.9rem;
+}
+
+.user-summary span {
+  color: #8793a8;
+  font-size: 0.75rem;
+}
+
+.logout-button {
+  min-height: 2.5rem;
+  padding: 0.6rem 0.9rem;
+  color: #dbe4f3;
+  font-weight: 600;
+  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.7rem;
+}
+
+.logout-button:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(139, 156, 255, 0.6);
+}
+
+.logout-button:focus-visible {
+  outline: 3px solid rgba(139, 156, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.logout-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.chat-error {
+  max-width: 90rem;
+  margin: 1rem auto 0;
+  padding: 0.875rem 1rem;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 0.75rem;
+}
+
+.chat-empty-state {
+  display: grid;
+  place-items: center;
+  max-width: 42rem;
+  margin: clamp(5rem, 16vh, 10rem) auto 0;
+  padding: 3rem;
+  text-align: center;
+}
+
+.chat-status-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-bottom: 1.25rem;
+  background: #34d399;
+  border-radius: 50%;
+  box-shadow: 0 0 1.25rem rgba(52, 211, 153, 0.7);
+}
+
+.chat-empty-state h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.chat-empty-state p {
+  max-width: 34rem;
+  margin: 1.25rem 0 0;
+  color: #99a5b9;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .chat-header {
+    align-items: flex-start;
+  }
+
+  .user-panel {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .chat-empty-state {
+    margin-top: 4rem;
+    padding: 2rem 1rem;
+  }
+}

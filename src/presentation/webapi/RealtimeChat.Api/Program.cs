@@ -50,8 +50,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Talkio API v1");
-        options.DocumentTitle = "Talkio API";
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Siglora API v1");
+        options.DocumentTitle = "Siglora API";
         options.DisplayRequestDuration();
     });
 }
