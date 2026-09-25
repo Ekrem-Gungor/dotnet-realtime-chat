@@ -1,75 +1,142 @@
-# React + TypeScript + Vite
+# Siglora Web Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Siglora is the React and TypeScript web client for the RealtimeChat API.
 
-Currently, two official plugins are available:
+The client currently provides cookie-based authentication, protected routing, session restoration, standardized API error handling, and the initial authenticated application shell.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Technology Stack
 
-## React Compiler
+- React
+- TypeScript
+- Vite
+- React Router
+- Vitest
+- Testing Library
+- ESLint
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Current Features
 
-## Expanding the ESLint configuration
+- Username and password login
+- HTTP-only authentication cookie support
+- Session restoration after page refresh
+- Protected and public-only routes
+- Logout flow
+- RFC Problem Details error handling
+- Responsive authenticated application shell
+- Route and login-flow tests
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Real-time SignalR messaging will be introduced in the next implementation stage.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Prerequisites
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Node.js 22
+- npm
+- RealtimeChat API running at `http://localhost:5258`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Configuration
 
+Copy the example environment file:
+
+### PowerShell
+
+```powershell
+Copy-Item .env.example .env.development
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+### Bash
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+cp .env.example .env.development
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The local configuration should contain:
 
+```env
+VITE_API_BASE_URL=http://localhost:5258
+```
+
+Only variables prefixed with `VITE_` are exposed to browser code. Secrets, connection strings, JWT signing keys, and database credentials must never be placed in frontend environment files.
+
+## Development
+
+Install dependencies:
+
+```bash
+npm ci
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The client is available at `http://localhost:5173`.
+
+The API must allow this origin and accept credentialed requests.
+
+## Quality Checks
+
+Run linting:
+
+```bash
+npm run lint
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+Run the automated tests once:
+
+```bash
+npm test
+```
+
+Run tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+## Project Structure
+
+```text
+src/
+├── app/           Application routing and route guards
+├── features/      Feature-oriented modules such as authentication
+├── shared/        Shared API, configuration, and utility code
+├── styles/        Global application styles
+├── test/          Shared test setup
+└── main.tsx       Application entry point
+```
+
+## Authentication Model
+
+The API writes the JWT to an HTTP-only cookie after a successful login. The client sends requests with credentials enabled and does not store access tokens in local storage or session storage.
+
+On application startup, the client requests the current authenticated session:
+
+- A successful response restores the user.
+- `401 Unauthorized` establishes an anonymous session.
+- Infrastructure and unexpected failures remain distinguishable from an unauthenticated state.
+
+## Routes
+
+| Route    | Access              | Purpose                         |
+| -------- | ------------------- | ------------------------------- |
+| `/login` | Anonymous users     | Authenticate with the API       |
+| `/chat`  | Authenticated users | Authenticated application shell |
+
+## CI
+
+GitHub Actions runs the following frontend checks for pushes and pull requests targeting `master`:
+
+```bash
+npm ci
+npm run lint
+npm run build
+npm test
 ```

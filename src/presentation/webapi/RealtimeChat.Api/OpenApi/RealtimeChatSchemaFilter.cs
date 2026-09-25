@@ -48,7 +48,7 @@ public sealed class RealtimeChatSchemaFilter : ISchemaFilter
             schema.Required?.Remove("senderUserName");
             schema.Example = new OpenApiObject
             {
-                ["message"] = new OpenApiString("Hello from Talkio!")
+                ["message"] = new OpenApiString("Hello from Siglora!")
             };
 
             return;
@@ -61,7 +61,7 @@ public sealed class RealtimeChatSchemaFilter : ISchemaFilter
                 ["id"] = new OpenApiString("f9f53075-fbba-4f23-a817-0a4e76ea17e1"),
                 ["senderUserId"] = new OpenApiInteger(4),
                 ["senderUserName"] = new OpenApiString(_demoUserName),
-                ["message"] = new OpenApiString("Hello from Talkio!"),
+                ["message"] = new OpenApiString("Hello from Siglora!"),
                 ["sendAt"] = new OpenApiString("2026-09-24T20:06:31Z")
             };
         }
