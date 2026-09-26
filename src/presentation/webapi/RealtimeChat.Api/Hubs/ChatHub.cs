@@ -6,6 +6,7 @@ using RealtimeChat.Domain.Entities.Concretes;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using RealtimeChat.Api.Hubs.Presence;
 
 namespace RealtimeChat.Api.Hubs
 {
@@ -13,10 +14,12 @@ namespace RealtimeChat.Api.Hubs
     public sealed class ChatHub : Hub
     {
         private readonly IMediator _mediator;
+        private readonly IUserConnectionTracker _connectionTracker;
 
-        public ChatHub(IMediator mediator)
+        public ChatHub(IMediator mediator, IUserConnectionTracker connectionTracker)
         {
             _mediator = mediator;
+            _connectionTracker = connectionTracker;
         }
 
         public async Task SendMessage(string message)
@@ -50,33 +53,61 @@ namespace RealtimeChat.Api.Hubs
         public override async Task OnConnectedAsync()
         {
             int userId = GetAuthenticatedUserId();
+            string connectionId = Context.ConnectionId;
 
-            await _mediator.Send(new SetUserOnlineStatusCommand
+            bool isFirstConnection = _connectionTracker.RegisterConnection(userId, connectionId);
+
+            if (isFirstConnection)
             {
-                UserId = userId,
-                LastLogin = DateTime.UtcNow,
-                IsOnline = true
-            },Context.ConnectionAborted);
+                try
+                {
+                    await _mediator.Send(new SetUserOnlineStatusCommand
+                    {
+                        UserId = userId,
+                        LastLogin = DateTime.UtcNow,
+                        IsOnline = true
+                    }, Context.ConnectionAborted);
+                }
+                catch
+                {
+                    _connectionTracker.UnregisterConnection(userId, connectionId);
+                    throw;
+                }
+            }
 
             await base.OnConnectedAsync();
 
-            await BroadcastOnlineUsersAsync(Context.ConnectionAborted);
+            if (isFirstConnection)
+            {
+                await BroadcastOnlineUsersAsync(Context.ConnectionAborted);
+            }
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             int userId = GetAuthenticatedUserId();
+            string connectionId = Context.ConnectionId;
 
-            await _mediator.Send(new SetUserOnlineStatusCommand
+            bool isLastConnection = _connectionTracker.UnregisterConnection(userId, connectionId);
+
+            try
             {
-                UserId = userId,
-                LastLogout = DateTime.UtcNow,
-                IsOnline = false
-            },CancellationToken.None);
+                if (isLastConnection)
+                {
+                    await _mediator.Send(new SetUserOnlineStatusCommand
+                    {
+                        UserId = userId,
+                        LastLogout = DateTime.UtcNow,
+                        IsOnline = false
+                    }, CancellationToken.None);
 
-            await BroadcastOnlineUsersAsync(CancellationToken.None);
-
-            await base.OnDisconnectedAsync(exception);
+                    await BroadcastOnlineUsersAsync(CancellationToken.None);
+                }
+            }
+            finally
+            {
+                await base.OnDisconnectedAsync(exception);
+            }
         }
 
         private int GetAuthenticatedUserId()

@@ -1,5 +1,6 @@
 using RealtimeChat.Api.ErrorHandling;
 using RealtimeChat.Api.Hubs;
+using RealtimeChat.Api.Hubs.Presence;
 using RealtimeChat.Api.OpenApi;
 using RealtimeChat.DependencyInjection;
 
@@ -18,7 +19,10 @@ builder.Services.AddProblemDetails(options =>
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddRealtimeChatSwagger(builder.Configuration);
+
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserConnectionTracker, UserConnectionTracker>();
+
 builder.Services.AddHealthChecks();
 builder.Services.AddRealtimeChat(builder.Configuration, typeof(Program).Assembly);
 
