@@ -1,17 +1,31 @@
-const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+function readAbsoluteUrl(
+  variableName: string,
+  configuredValue: string | undefined,
+): string {
+  const normalizedValue = configuredValue?.trim();
 
-if (!configuredApiBaseUrl) {
-  throw new Error("VITE_API_BASE_URL is required.");
-}
+  if (!normalizedValue) {
+    throw new Error(`${variableName} is required.`);
+  }
 
-let parsedApiBaseUrl: URL;
+  let parsedUrl: URL;
 
-try {
-  parsedApiBaseUrl = new URL(configuredApiBaseUrl);
-} catch {
-  throw new Error("VITE_API_BASE_URL must be a valid absolute URL.");
+  try {
+    parsedUrl = new URL(normalizedValue);
+  } catch {
+    throw new Error(`${variableName} must be a valid absolute URL.`);
+  }
+
+  return parsedUrl.toString().replace(/\/$/, "");
 }
 
 export const environment = Object.freeze({
-  apiBaseUrl: parsedApiBaseUrl.toString().replace(/\/$/, ""),
+  apiBaseUrl: readAbsoluteUrl(
+    "VITE_API_BASE_URL",
+    import.meta.env.VITE_API_BASE_URL,
+  ),
+  signalRHubUrl: readAbsoluteUrl(
+    "VITE_SIGNALR_HUB_URL",
+    import.meta.env.VITE_SIGNALR_HUB_URL,
+  ),
 });

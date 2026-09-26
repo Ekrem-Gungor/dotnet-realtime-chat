@@ -9,9 +9,18 @@ import { useNavigate } from "react-router";
 import { ApiError } from "../../../shared/api/ApiError";
 import { useAuth } from "../../auth/context/useAuth";
 import { chatService } from "../api/chatService";
+import { useRealtimeChat } from "../realtime/useRealtimeChat";
 import type { ChatMessage } from "../types/chat";
+import type { RealtimeConnectionStatus } from "../types/realtime";
 
 type MessageHistoryStatus = "loading" | "ready" | "error";
+
+const connectionStatusLabels: Record<RealtimeConnectionStatus, string> = {
+  disconnected: "Bağlantı kesildi",
+  connecting: "Bağlanıyor",
+  connected: "Canlı",
+  reconnecting: "Yeniden bağlanıyor",
+};
 
 function getHistoryErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
@@ -59,6 +68,24 @@ export function ChatPage() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  const appendMessage = useCallback((incomingMessage: ChatMessage) => {
+    setMessages((currentMessages) => {
+      const messageAlreadyExists = currentMessages.some(
+        (message) => message.id === incomingMessage.id,
+      );
+
+      if (messageAlreadyExists) {
+        return currentMessages;
+      }
+
+      return [...currentMessages, incomingMessage];
+    });
+  }, []);
+
+  const { connectionStatus, connectionError, onlineUsers } = useRealtimeChat({
+    onMessage: appendMessage,
+  });
 
   const loadMessages = useCallback(async () => {
     setHistoryStatus("loading");
@@ -119,7 +146,7 @@ export function ChatPage() {
         message: normalizedMessage,
       });
 
-      setMessages((currentMessages) => [...currentMessages, createdMessage]);
+      appendMessage(createdMessage);
 
       setMessageDraft("");
       setHistoryStatus("ready");
@@ -170,6 +197,20 @@ export function ChatPage() {
         </div>
 
         <div className="user-panel">
+          <div className="realtime-summary">
+            <span
+              className="connection-status"
+              data-status={connectionStatus}
+            >
+              <span className="connection-status-dot" aria-hidden="true" />
+              {connectionStatusLabels[connectionStatus]}
+            </span>
+
+            <span className="online-user-count">
+              {onlineUsers.length} çevrimiçi
+            </span>
+          </div>
+
           <div className="user-summary">
             <strong>{user?.userName}</strong>
             <span>{user?.roles.join(", ") || "Member"}</span>
@@ -189,6 +230,13 @@ export function ChatPage() {
       {logoutError && (
         <p className="chat-error" role="alert">
           {logoutError}
+        </p>
+      )}
+
+      {connectionError && (
+        <p className="chat-warning" role="status">
+          {connectionError} Mesaj geçmişini HTTP üzerinden kullanmaya devam
+          edebilirsiniz.
         </p>
       )}
 
