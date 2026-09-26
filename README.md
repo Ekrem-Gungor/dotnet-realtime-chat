@@ -1,260 +1,144 @@
-# Siglora (RealtimeChat)
+# Siglora
 
-> A portfolio-oriented real-time chat application built with ASP.NET Core, SignalR, Redis, SQL Server, React, and TypeScript.
+> A portfolio-ready real-time chat application built with ASP.NET Core, SignalR, Redis, SQL Server, React, and TypeScript.
 
-## Overview
-
-Siglora is the product-facing name of the RealtimeChat project.
-
-The repository demonstrates a layered .NET backend, Redis-backed messaging controls, JWT authentication, standardized API errors, and a React web client with protected routing and session restoration.
-
-The web client currently supports authentication, HTTP-based message history, and message creation. Real-time SignalR delivery and online-user presence are the next implementation stage.
+Siglora demonstrates an authenticated, full-stack messaging workflow: users sign in through an HttpOnly cookie, load recent Redis-backed messages, exchange messages in real time, see connection state and online presence, and recover automatically after a temporary API outage.
 
 ## Highlights
 
-### Backend
-
-- ASP.NET Core Web API and SignalR
-- JWT authentication for HTTP and hub connections
-- HttpOnly authentication cookie for the browser client
-- ASP.NET Core Identity with role and profile models
-- SQL Server persistence with Entity Framework Core
-- Redis sorted sets for recent message storage
-- Atomic Redis-backed per-user message quota
-- MediatR commands, queries, and notifications
-- RFC Problem Details error responses
-- FluentValidation request validation
-- Onion-style architectural separation
-- Swagger authentication support
-- Automated database migration in the local Compose environment
-
-### Frontend
-
-- React and TypeScript
-- Vite development and production builds
-- Protected and public-only routes
-- Login, logout, and session restoration
-- Credentialed API requests
-- Centralized HTTP and Problem Details handling
-- Responsive authenticated chat interface
-- Recent Redis-backed message history
-- HTTP-based message creation
-- Loading, empty, validation, authentication, quota, and general error states
-- Enter-to-send and Shift+Enter multiline input
-- Vitest and Testing Library coverage
-
-### Delivery
-
-- Docker Compose for API, SQL Server, and Redis
-- GitHub Actions backend and frontend quality checks
-- API container build validation
-- Safe example configuration files
+- Layered .NET 10 backend with MediatR commands, queries, validation, and notifications
+- React and TypeScript client with protected routing and session restoration
+- SignalR message delivery, automatic reconnect, and connection-aware presence tracking
+- Redis sorted-set message history and atomic per-user message quota
+- ASP.NET Core Identity, EF Core, SQL Server, and JWT authentication
+- RFC Problem Details responses and shared frontend error handling
+- Production frontend image built with Node and served by Nginx
+- One-command local stack for web, API, SQL Server, and Redis
+- Backend, frontend, SignalR, presence, validation, and error-handling tests
+- GitHub Actions checks for .NET, React, Compose, and both container images
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    UI["Siglora React Client"] -->|"HTTP + HttpOnly cookie"| API["ASP.NET Core API"]
-    UI <-->|"SignalR - planned client integration"| HUB["ChatHub"]
-    API --> APP["MediatR Application Layer"]
-    HUB --> APP
-    APP --> SQL["SQL Server and Identity"]
-    APP --> REDIS["Redis messages and quota"]
-    APP --> EVENTS["Application Notifications"]
-    EVENTS --> HUB
+    Browser["Siglora React client"] -->|"same-origin HTTP"| Web["Nginx web container"]
+    Browser <-->|"SignalR WebSocket"| Web
+    Web -->|"/api and /chatHub proxy"| API["ASP.NET Core API"]
+    API --> App["MediatR application layer"]
+    App --> SQL["SQL Server and Identity"]
+    App --> Redis["Redis messages and quota"]
+    App --> Events["Application notifications"]
+    Events --> API
 ```
 
-## Authentication Flow
+The web image uses root-relative production URLs. Nginx serves the SPA and proxies `/api` and `/chatHub` to the API, so the browser uses one origin and authentication cookies work for both HTTP and SignalR traffic.
 
-1. The client submits credentials to `POST /api/Auth/login`.
-2. The API validates the credentials and generates a signed JWT.
-3. The JWT is returned in the response and written to an HttpOnly cookie.
-4. The browser client sends the cookie automatically with credentialed requests.
-5. `GET /api/Auth/session` restores the authenticated user after a page refresh.
-6. `POST /api/Auth/logout` removes the authentication cookie.
-7. Protected routes redirect anonymous users to `/login`.
-8. The web client does not store the JWT in local storage or session storage.
+## Core Flows
 
-Swagger can use the token returned from the login response as a bearer credential. The browser client uses the HttpOnly cookie.
+### Authentication
 
-## Message Flow
+1. `POST /api/Auth/login` validates the credentials and creates a signed JWT.
+2. The API writes the token to an HttpOnly cookie.
+3. The client sends credentialed requests without storing the JWT in browser storage.
+4. `GET /api/Auth/session` restores the user after a refresh.
+5. `POST /api/Auth/logout` clears the browser session.
 
-1. An authenticated user submits a message.
-2. The server derives the sender identity from the authenticated principal.
-3. Message validation runs through the MediatR pipeline.
-4. The user quota is checked and consumed atomically in Redis.
-5. The message is stored in a Redis sorted set.
-6. An application notification publishes the message through SignalR.
-7. Connected clients receive the resulting event.
+Swagger can also use the login response token as a bearer credential.
+
+### Messaging
+
+1. The API derives the sender from the authenticated principal.
+2. FluentValidation runs through the MediatR pipeline.
+3. Redis atomically consumes the user's message quota.
+4. The message is stored in the recent-message sorted set.
+5. An application notification broadcasts the complete message DTO through SignalR.
+6. Clients de-duplicate messages by ID and render the event once.
+
+### Presence and reconnect
+
+Presence is tracked per SignalR connection, not as a single boolean per user. A user remains online while at least one tab is connected. The client retries an interrupted connection and refreshes the online-user list after reconnecting.
+
+## Technology
+
+| Area | Stack |
+| --- | --- |
+| Backend | C#, .NET 10, ASP.NET Core, SignalR, EF Core, Identity, MediatR, FluentValidation |
+| Data | SQL Server, Redis |
+| Frontend | React, TypeScript, Vite, React Router, SignalR client |
+| Quality | xUnit, Moq, Vitest, Testing Library, ESLint |
+| Delivery | Docker, Docker Compose, Nginx, GitHub Actions |
 
 ## Project Structure
 
 ```text
 src/
-  core/
-    RealtimeChat.Domain
-    RealtimeChat.Application
-    RealtimeChat.Contracts
-    RealtimeChat.Common
-
-  infrastructure/
-    RealtimeChat.Persistence
-    RealtimeChat.Infrastructure
-    RealtimeChat.DependencyInjection
-
+  core/                Domain, application, contracts, and common code
+  infrastructure/      Persistence, Redis/JWT implementations, and composition
   presentation/
-    webapi/
-      RealtimeChat.Api
-
-    webui/
-      realtimechat.ui
-
-tests/
-  RealtimeChat.Tests
+    webapi/             ASP.NET Core API and SignalR hub
+    webui/              React and TypeScript client
+tests/                  Backend test project
+docs/                   Architecture, deployment checklist, and release notes
 ```
 
-The React client uses feature-oriented organization:
+## Quick Start: Full Container Stack
 
-```text
-src/presentation/webui/realtimechat.ui/src/
-  app/         Application routing and route guards
-  features/    Feature modules such as authentication
-  shared/      Shared API and configuration code
-  styles/      Global application styles
-  test/        Shared test setup
-  main.tsx     Application entry point
-```
+### Requirements
 
-## Technology Stack
+- Docker Desktop or Docker Engine with Compose
+- Free local ports `5173`, `5258`, `1433`, and `6379` (or change them in `.env`)
 
-### Backend
-
-`C#` · `.NET 10` · `ASP.NET Core Web API` · `SignalR` · `Entity Framework Core` · `ASP.NET Core Identity` · `SQL Server` · `Redis` · `MediatR` · `FluentValidation` · `JWT` · `Swagger`
-
-### Frontend
-
-`React` · `TypeScript` · `Vite` · `React Router` · `Vitest` · `Testing Library` · `ESLint`
-
-### Infrastructure
-
-`Docker` · `Docker Compose` · `GitHub Actions`
-
-## Local Setup
-
-### Prerequisites
-
-- Docker Desktop
-- .NET 10 SDK
-- Node.js 22
-- npm
-
-## Run the Backend with Docker Compose
-
-Copy the example environment file:
-
-### PowerShell
+Create local configuration:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-### Bash
-
 ```bash
 cp .env.example .env
 ```
 
-Start the API, SQL Server, and Redis:
+Replace the example SQL, JWT, and demo-user passwords in `.env`, then start every service:
 
 ```bash
 docker compose up --build -d
 docker compose ps
 ```
 
-Available backend endpoints:
+| Service | Address |
+| --- | --- |
+| Siglora web client | `http://localhost:5173` |
+| API | `http://localhost:5258` |
+| Swagger | `http://localhost:5258/swagger` |
+| Health check | `http://localhost:5258/health` |
+| SignalR hub | `http://localhost:5258/chatHub` |
 
-| Service      | Address                         |
-| ------------ | ------------------------------- |
-| API          | `http://localhost:5258`         |
-| Swagger      | `http://localhost:5258/swagger` |
-| Health check | `http://localhost:5258/health`  |
-| SignalR hub  | `http://localhost:5258/chatHub` |
+Open `http://localhost:5173/login` and use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from the root `.env` file. Database migrations and demo-user initialization run automatically only in this local `Development` stack.
 
-Database migrations run automatically in the Compose `Development` environment.
+Stop the stack without deleting SQL data:
 
-The local stack also creates a demo user using these `.env` values:
+```bash
+docker compose down
+```
 
-- `DEMO_USER_NAME`
-- `DEMO_USER_EMAIL`
-- `DEMO_USER_PASSWORD`
+## Frontend Development
 
-The example credentials are intended only for disposable local development. Demo identity initialization is disabled outside the Development environment.
-
-## Run the Web Client
-
-Move to the frontend directory:
+Start the API stack, then run Vite separately:
 
 ```bash
 cd src/presentation/webui/realtimechat.ui
-```
-
-Copy the frontend environment file:
-
-### PowerShell
-
-```powershell
-Copy-Item .env.example .env.development
-```
-
-### Bash
-
-```bash
 cp .env.example .env.development
-```
-
-Install dependencies and start Vite:
-
-```bash
 npm ci
 npm run dev
 ```
 
-The web client is available at:
+On PowerShell, use `Copy-Item .env.example .env.development` instead of `cp`.
 
-```text
-http://localhost:5173
-```
+The development environment uses absolute API and hub URLs. The production Docker build uses `/` and `/chatHub`, which Nginx resolves through the same origin.
 
-The backend must be running at the address configured by `VITE_API_BASE_URL`.
+## Manual Backend Development
 
-## Try the Application
-
-1. Start the backend stack.
-2. Start the React development server.
-3. Open `http://localhost:5173/login`.
-4. Use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from the root `.env` file.
-5. Confirm that successful authentication redirects to `/chat`.
-6. Verify that recent messages are loaded from the API.
-7. Send a message using the button or the Enter key.
-8. Use Shift+Enter to create a multiline message.
-9. Refresh the page to verify session and message-history restoration.
-10. Use the logout action to remove the session.
-
-Messages created through the HTTP API are added to the local message list immediately. Real-time delivery from other connected clients will be added with the SignalR integration.
-
-## Use Swagger Authentication
-
-1. Open `http://localhost:5258/swagger`.
-2. Execute `POST /api/Auth/login`.
-3. Use the demo credentials from the root `.env` file.
-4. Copy the `token` value from the response.
-5. Select **Authorize**.
-6. Paste only the token; Swagger adds the `Bearer` prefix.
-7. Call a protected chat endpoint.
-
-## Manual Backend Setup
-
-Copy the safe API configuration example:
+Create the ignored local API configuration from the safe example:
 
 ```powershell
 Copy-Item `
@@ -262,27 +146,23 @@ Copy-Item `
   src/presentation/webapi/RealtimeChat.Api/appsettings.Development.json
 ```
 
-Update the local SQL Server, Redis, JWT, and CORS settings. Local development configuration files are ignored by Git.
-
-Apply migrations and run the API:
+Update the local connection and JWT values, then run:
 
 ```bash
 dotnet restore RealtimeChat.sln
-
 dotnet ef database update \
   --project src/infrastructure/RealtimeChat.Persistence \
   --startup-project src/presentation/webapi/RealtimeChat.Api
-
 dotnet run --project src/presentation/webapi/RealtimeChat.Api
 ```
 
-Never commit real connection strings, JWT signing keys, Redis credentials, production origins, or private user credentials.
+Never commit real credentials, connection strings, signing keys, or production origins.
 
 ## Quality Checks
 
 ### Backend
 
-Redis-backed tests use database `15` by default to keep test data isolated.
+Redis-backed tests use database `15` by default:
 
 ```bash
 docker run --rm -d --name realtimechat-test-redis -p 6379:6379 redis:7-alpine
@@ -290,11 +170,11 @@ dotnet test RealtimeChat.sln --configuration Release
 docker stop realtimechat-test-redis
 ```
 
-Set `TEST_REDIS_CONNECTION` to use a different isolated Redis instance.
+Set `TEST_REDIS_CONNECTION` to target another isolated Redis instance.
 
 ### Frontend
 
-Run these commands from `src/presentation/webui/realtimechat.ui`:
+Run from `src/presentation/webui/realtimechat.ui`:
 
 ```bash
 npm ci
@@ -303,69 +183,58 @@ npm run build
 npm test
 ```
 
-Use watch mode during development:
-
-```bash
-npm run test:watch
-```
-
 ## Continuous Integration
 
-GitHub Actions runs two independent jobs for pushes and pull requests targeting `master`.
+GitHub Actions runs independent backend and frontend jobs for pushes and pull requests targeting `master`.
 
-### Backend quality
-
-- Restore the .NET solution
-- Build in Release mode
-- Run automated tests with Redis
-- Validate Docker Compose
-- Build the API container image
-
-### Frontend quality
-
-- Install dependencies using `npm ci`
-- Run ESLint
-- Create a production build
-- Run Vitest tests
+- Backend: restore, Release build, tests with Redis, Compose validation, API image build
+- Frontend: deterministic install, lint, production build, tests, web image build
 
 ## API Surface
 
-| Type    | Route / Method           | Purpose                                          |
-| ------- | ------------------------ | ------------------------------------------------ |
-| HTTP    | `POST /api/Auth/login`   | Authenticate and issue a JWT and HttpOnly cookie |
-| HTTP    | `GET /api/Auth/session`  | Return the current authenticated user            |
-| HTTP    | `POST /api/Auth/logout`  | Remove the authentication cookie                 |
-| HTTP    | `POST /api/Chat/create`  | Create a message as the authenticated user       |
-| HTTP    | `GET /api/Chat/messages` | Read recent Redis-backed messages                |
-| HTTP    | `GET /health`            | Report application liveness                      |
-| SignalR | `/chatHub`               | Provide the authenticated real-time connection   |
-| Hub     | `SendMessage`            | Validate, persist, and broadcast a message       |
-| Hub     | `Join`                   | Broadcast a system join event                    |
-| Hub     | `GetOnlineUsers`         | Broadcast the current online-user list           |
+| Type | Route / method | Purpose |
+| --- | --- | --- |
+| HTTP | `POST /api/Auth/login` | Authenticate and issue a JWT plus HttpOnly cookie |
+| HTTP | `GET /api/Auth/session` | Return the current authenticated user |
+| HTTP | `POST /api/Auth/logout` | Clear the authentication cookie |
+| HTTP | `POST /api/Chat/create` | Create a message as the authenticated user |
+| HTTP | `GET /api/Chat/messages` | Read recent Redis-backed messages |
+| HTTP | `GET /health` | Report API liveness |
+| SignalR | `/chatHub` | Authenticated real-time connection |
+| Hub | `SendMessage` | Validate, persist, and broadcast a message |
+| Hub | `Join` | Publish the user's join event |
+| Hub | `GetOnlineUsers` | Broadcast the current online-user list |
 
 ## Security Decisions
 
 - Browser authentication uses an HttpOnly cookie.
-- The client does not persist JWTs in browser storage.
-- Protected API operations and the SignalR hub require authentication.
-- Sender identity is derived from trusted JWT claims.
-- Validation failures use standardized Problem Details responses.
-- Message quota consumption is atomic in Redis.
-- Seeded identities use reserved `example.invalid` addresses.
-- Demo credentials are limited to local development.
-- Local configuration files are excluded from source control.
-- CI validates builds, tests, Compose configuration, and the API image.
+- JWTs are not persisted in local storage or session storage.
+- Protected API endpoints and the SignalR hub require authentication.
+- Sender identity comes from trusted JWT claims, not request payloads.
+- Validation and operational errors use Problem Details.
+- Redis quota consumption is atomic.
+- Demo credentials are restricted to the local Development environment.
+- Configuration examples contain disposable values only.
 
-## Current Limitations
+## Scope and Deployment Status
 
-- Browser-based SignalR messaging is not implemented yet.
-- Registration and password-bootstrap endpoints are not provided.
-- Messages created by other clients require a refresh until the SignalR client is implemented.
-- Online-state reconciliation may be required after abnormal disconnections.
-- Docker Compose currently runs backend infrastructure, not the React development server.
-- Production deployment, secret rotation, observability, load testing, and broader integration coverage require additional work.
+Version `v1.0.0` is the portfolio baseline: the application, container definitions, automated tests, and deployment checklist are ready for review. It is **not currently published to the homelab**. The production rollout is intentionally deferred until the target server is available; see [docs/deployment.md](docs/deployment.md).
 
-This repository is a technical learning project and architecture sample rather than a turnkey production chat platform.
+Current boundaries:
+
+- Presence is connection-aware within one API process; multi-instance deployments require a shared presence store and SignalR backplane.
+- Registration and password-bootstrap endpoints are outside the demo scope.
+- Redis message retention trimming and broader SQL integration coverage remain follow-ups.
+- Production TLS, secret management, backups, observability, and load testing must be completed during deployment.
+
+This repository is a portfolio and architecture sample, not a turnkey public chat service.
+
+## Documentation
+
+- [Architecture decisions](docs/architecture.md)
+- [Deployment checklist](docs/deployment.md)
+- [v1.0.0 release notes](docs/release-notes-v1.0.0.md)
+- [Changelog](CHANGELOG.md)
 
 ## Author
 
