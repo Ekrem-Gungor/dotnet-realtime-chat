@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import {
   type AuthContextValue,
 } from "../../../auth/context/authContext";
 import type { ChatMessage } from "../../types/chat";
+import type { RealtimeConnectionStatus } from "../../types/realtime";
 import { ChatPage } from "../ChatPage";
 
 const chatServiceMocks = vi.hoisted(() => ({
@@ -19,6 +20,29 @@ vi.mock("../../api/chatService", () => ({
   chatService: {
     getMessages: chatServiceMocks.getMessages,
     createMessage: chatServiceMocks.createMessage,
+  },
+}));
+
+const realtimeChatMocks = vi.hoisted(() => ({
+  onMessage: null as ((message: ChatMessage) => void) | null,
+  connectionStatus: "connected" as RealtimeConnectionStatus,
+  connectionError: null as string | null,
+  onlineUsers: [] as unknown[],
+}));
+
+vi.mock("../../realtime/useRealtimeChat", () => ({
+  useRealtimeChat: ({
+    onMessage,
+  }: {
+    onMessage: (message: ChatMessage) => void;
+  }) => {
+    realtimeChatMocks.onMessage = onMessage;
+
+    return {
+      connectionStatus: realtimeChatMocks.connectionStatus,
+      connectionError: realtimeChatMocks.connectionError,
+      onlineUsers: realtimeChatMocks.onlineUsers,
+    };
   },
 }));
 
@@ -69,6 +93,10 @@ describe("ChatPage", () => {
     chatServiceMocks.getMessages.mockReset();
     chatServiceMocks.createMessage.mockReset();
     chatServiceMocks.getMessages.mockResolvedValue([]);
+    realtimeChatMocks.onMessage = null;
+    realtimeChatMocks.connectionStatus = "connected";
+    realtimeChatMocks.connectionError = null;
+    realtimeChatMocks.onlineUsers = [];
   });
 
   it("API üzerinden alınan mesaj geçmişini gösterir", async () => {
@@ -228,5 +256,75 @@ describe("ChatPage", () => {
 
     expect(messageInput).toHaveAttribute("aria-invalid", "true");
     expect(messageInput).toHaveValue("Validation testi");
+  });
+
+  it("SignalR üzerinden gelen mesajı listeye ekler", async () => {
+    renderChatPage();
+
+    await screen.findByText("Son 30 dakika içinde henüz mesaj bulunmuyor.");
+
+    act(() => {
+      realtimeChatMocks.onMessage?.(
+        createMessage({
+          id: "signalr-message-1",
+          senderUserId: 8,
+          senderUserName: "other.user",
+          message: "SignalR üzerinden gelen mesaj",
+        }),
+      );
+    });
+
+    expect(
+      screen.getByText("SignalR üzerinden gelen mesaj"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 mesaj")).toBeInTheDocument();
+  });
+
+  it("aynı mesaj HTTP ve SignalR üzerinden geldiğinde tekrar eklemez", async () => {
+    const message = createMessage({
+      id: "shared-message-id",
+      message: "Tekil kalması gereken mesaj",
+    });
+
+    chatServiceMocks.getMessages.mockResolvedValue([message]);
+
+    renderChatPage();
+
+    expect(
+      await screen.findByText("Tekil kalması gereken mesaj"),
+    ).toBeInTheDocument();
+
+    act(() => {
+      realtimeChatMocks.onMessage?.(message);
+    });
+
+    expect(screen.getAllByText("Tekil kalması gereken mesaj")).toHaveLength(1);
+    expect(screen.getByText("1 mesaj")).toBeInTheDocument();
+  });
+
+  it("bağlantı durumunu ve çevrimiçi kullanıcı sayısını gösterir", async () => {
+    realtimeChatMocks.onlineUsers = [{}, {}];
+
+    renderChatPage();
+
+    await screen.findByText("Son 30 dakika içinde henüz mesaj bulunmuyor.");
+
+    expect(screen.getByText("Canlı")).toBeInTheDocument();
+    expect(screen.getByText("2 çevrimiçi")).toBeInTheDocument();
+  });
+
+  it("SignalR bağlantısı kurulamadığında HTTP kullanım uyarısını gösterir", async () => {
+    realtimeChatMocks.connectionStatus = "disconnected";
+    realtimeChatMocks.connectionError =
+      "Gerçek zamanlı bağlantı kurulamadı.";
+
+    renderChatPage();
+
+    await screen.findByText("Son 30 dakika içinde henüz mesaj bulunmuyor.");
+
+    expect(screen.getByText("Bağlantı kesildi")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Mesaj geçmişini HTTP üzerinden kullanmaya devam/),
+    ).toBeInTheDocument();
   });
 });

@@ -255,6 +255,56 @@ button {
   gap: 1rem;
 }
 
+.realtime-summary {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: end;
+}
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #a8b3c7;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.connection-status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: #64748b;
+  border-radius: 50%;
+}
+
+.connection-status[data-status="connected"] {
+  color: #6ee7b7;
+}
+
+.connection-status[data-status="connected"] .connection-status-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 0.2rem rgba(52, 211, 153, 0.13);
+}
+
+.connection-status[data-status="connecting"] .connection-status-dot,
+.connection-status[data-status="reconnecting"] .connection-status-dot {
+  background: #fbbf24;
+  animation: connection-pulse 1.2s ease-in-out infinite;
+}
+
+.connection-status[data-status="disconnected"] {
+  color: #fca5a5;
+}
+
+.connection-status[data-status="disconnected"] .connection-status-dot {
+  background: #f87171;
+}
+
+.online-user-count {
+  color: #8793a8;
+  font-size: 0.72rem;
+}
+
 .user-summary {
   display: grid;
   gap: 0.15rem;
@@ -303,6 +353,16 @@ button {
   color: #fecaca;
   background: rgba(127, 29, 29, 0.24);
   border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 0.75rem;
+}
+
+.chat-warning {
+  max-width: 90rem;
+  margin: 1rem auto 0;
+  padding: 0.875rem 1rem;
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.25);
   border-radius: 0.75rem;
 }
 
@@ -570,6 +630,13 @@ button {
   font-size: 0.75rem;
 }
 
+@keyframes connection-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+
 @keyframes message-loading {
   to {
     transform: rotate(360deg);
@@ -577,6 +644,19 @@ button {
 }
 
 @media (max-width: 640px) {
+  .chat-header {
+    align-items: flex-start;
+  }
+
+  .user-panel {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .realtime-summary {
+    justify-items: end;
+  }
+
   .message-panel {
     min-height: calc(100vh - 9rem);
     max-height: calc(100vh - 9rem);

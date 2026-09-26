@@ -10,63 +10,93 @@ using Microsoft.AspNetCore.SignalR;
 namespace RealtimeChat.Api.Hubs
 {
     [Authorize]
-    public class ChatHub : Hub
+    public sealed class ChatHub : Hub
     {
-        private readonly IMediator _mediatR;
+        private readonly IMediator _mediator;
+
         public ChatHub(IMediator mediator)
         {
-            _mediatR = mediator;
+            _mediator = mediator;
         }
 
         public async Task SendMessage(string message)
         {
-            string senderName = Context.User?.Identity?.Name
-                ?? throw new HubException("Authenticated user name is missing.");
+            string senderName = Context.User?.Identity?.Name ?? throw new HubException("Authenticated user name is missing.");
 
-            await _mediatR.Send(new CreateChatMessageCommand
+            await _mediator.Send(new CreateChatMessageCommand
             {
                 SenderUserName = senderName,
                 Message = message
-            });
+            },
+                Context.ConnectionAborted);
         }
 
         public async Task Join()
         {
-            string joinedName = Context.User?.Identity?.Name
-                ?? throw new HubException("Authenticated user name is missing.");
+            string joinedName = Context.User?.Identity?.Name ?? throw new HubException("Authenticated user name is missing.");
 
-            await _mediatR.Send(new CreateSystemMessageCommand
+            await _mediator.Send(new CreateSystemMessageCommand
             {
                 JoinedUserName = joinedName
-            });
+            },
+                Context.ConnectionAborted);
         }
 
-        public async Task GetOnlineUsers()
+        public Task GetOnlineUsers()
         {
-            List<ConnectedUserDto> onlineUsers = await _mediatR.Send(new OnlineUsersQuery());
-            await Clients.All.SendAsync("ReceiveOnlineUsers", onlineUsers);
+            return BroadcastOnlineUsersAsync(Context.ConnectionAborted);
         }
 
         public override async Task OnConnectedAsync()
         {
-            await _mediatR.Send(new SetUserOnlineStatusCommand
+            int userId = GetAuthenticatedUserId();
+
+            await _mediator.Send(new SetUserOnlineStatusCommand
             {
-                UserId = Convert.ToInt32(Context.UserIdentifier),
+                UserId = userId,
                 LastLogin = DateTime.UtcNow,
                 IsOnline = true
-            });
+            },Context.ConnectionAborted);
+
             await base.OnConnectedAsync();
+
+            await BroadcastOnlineUsersAsync(Context.ConnectionAborted);
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            await _mediatR.Send(new SetUserOnlineStatusCommand
+            int userId = GetAuthenticatedUserId();
+
+            await _mediator.Send(new SetUserOnlineStatusCommand
             {
-                UserId = Convert.ToInt32(Context.UserIdentifier),
+                UserId = userId,
                 LastLogout = DateTime.UtcNow,
                 IsOnline = false
-            });
+            },CancellationToken.None);
+
+            await BroadcastOnlineUsersAsync(CancellationToken.None);
+
             await base.OnDisconnectedAsync(exception);
+        }
+
+        private int GetAuthenticatedUserId()
+        {
+            if (int.TryParse(Context.UserIdentifier, out int userId))
+            {
+                return userId;
+            }
+
+            throw new HubException("Authenticated user identifier is missing.");
+        }
+
+        private async Task BroadcastOnlineUsersAsync(CancellationToken cancellationToken)
+        {
+            List<ConnectedUserDto> onlineUsers = await _mediator.Send(new OnlineUsersQuery(), cancellationToken);
+
+            await Clients.All.SendAsync(
+                ChatHubEvent.ReceiveOnlineUsers,
+                onlineUsers,
+                cancellationToken);
         }
     }
 }

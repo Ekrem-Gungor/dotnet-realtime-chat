@@ -17,13 +17,14 @@ namespace RealtimeChat.Api.EventHandlers.ChatMessages
         public async Task Handle(SystemMessageCreateEvent notification, CancellationToken cancellationToken)
         {
             SystemMessageDto message = notification.SystemMessage;
-            await _hubContext.Clients.All.SendAsync("ReceiveSystemMessage", new
+            await _hubContext.Clients.All.SendAsync(ChatHubEvent.ReceiveSystemMessage, new
             {
                 message.JoinedUserName,
                 message.SenderUserName,
                 message.Message,
                 message.SendAt
-            });
+            },
+            cancellationToken);
         }
     }
 }
