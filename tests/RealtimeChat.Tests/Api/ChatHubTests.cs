@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Moq;
 using RealtimeChat.Api.Hubs;
+using RealtimeChat.Api.Hubs.Presence;
 using RealtimeChat.Application.Features.AppUsers.Commands;
 using RealtimeChat.Application.Features.Auths.Dtos.Response;
 using RealtimeChat.Application.Features.Auths.Queries;
@@ -19,6 +20,8 @@ namespace RealtimeChat.Tests.Api
             HubFixture fixture = CreateFixture();
 
             await fixture.Hub.OnConnectedAsync();
+
+            fixture.ConnectionTracker.Verify(tracker => tracker.RegisterConnection(4, "connection-1"), Times.Once);
 
             fixture.Mediator.Verify(
                 mediator => mediator.Send(
@@ -43,7 +46,9 @@ namespace RealtimeChat.Tests.Api
 
             await fixture.Hub.OnDisconnectedAsync(new InvalidOperationException("Connection closed."));
 
-            fixture.Mediator.Verify(mediator => 
+            fixture.ConnectionTracker.Verify(tracker => tracker.UnregisterConnection(4, "connection-1"), Times.Once);
+
+            fixture.Mediator.Verify(mediator =>
                 mediator.Send(
                     It.Is<SetUserOnlineStatusCommand>(
                         command =>
@@ -58,6 +63,81 @@ namespace RealtimeChat.Tests.Api
             VerifyOnlineUsersBroadcast(fixture);
         }
 
+        [Fact]
+        public async Task OnConnectedAsync_WhenUserAlreadyHasActiveConnection_DoesNotMarkUserOnlineAgain()
+        {
+            HubFixture fixture = CreateFixture();
+
+            fixture.ConnectionTracker
+                .Setup(tracker =>
+                    tracker.RegisterConnection(4, "connection-1"))
+                .Returns(false);
+
+            await fixture.Hub.OnConnectedAsync();
+
+            fixture.ConnectionTracker.Verify(
+                tracker => tracker.RegisterConnection(4, "connection-1"),
+                Times.Once);
+
+            fixture.Mediator.Verify(
+                mediator => mediator.Send(
+                    It.IsAny<SetUserOnlineStatusCommand>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            fixture.Mediator.Verify(
+                mediator => mediator.Send(
+                    It.IsAny<OnlineUsersQuery>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            fixture.ClientProxy.Verify(
+                proxy => proxy.SendCoreAsync(
+                    ChatHubEvent.ReceiveOnlineUsers,
+                    It.IsAny<object?[]>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task OnDisconnectedAsync_WhenUserHasAnotherActiveConnection_DoesNotMarkUserOffline()
+        {
+            HubFixture fixture = CreateFixture();
+
+            fixture.ConnectionTracker
+                .Setup(tracker =>
+                    tracker.UnregisterConnection(4, "connection-1"))
+                .Returns(false);
+
+            await fixture.Hub.OnDisconnectedAsync(
+                new InvalidOperationException("Connection closed."));
+
+            fixture.ConnectionTracker.Verify(
+                tracker => tracker.UnregisterConnection(4, "connection-1"),
+                Times.Once);
+
+            fixture.Mediator.Verify(
+                mediator => mediator.Send(
+                    It.IsAny<SetUserOnlineStatusCommand>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            fixture.Mediator.Verify(
+                mediator => mediator.Send(
+                    It.IsAny<OnlineUsersQuery>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            fixture.ClientProxy.Verify(
+                proxy => proxy.SendCoreAsync(
+                    ChatHubEvent.ReceiveOnlineUsers,
+                    It.IsAny<object?[]>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+
+
         private static HubFixture CreateFixture()
         {
             List<ConnectedUserDto> onlineUsers = [new ConnectedUserDto
@@ -69,27 +149,29 @@ namespace RealtimeChat.Tests.Api
 
             Mock<IMediator> mediator = new();
 
-            mediator.Setup(instance => instance.Send(It.IsAny<SetUserOnlineStatusCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            Mock<IUserConnectionTracker> connectionTracker = new();
+            connectionTracker.Setup(tracker => tracker.RegisterConnection(4, "connection-1")).Returns(true);
+            connectionTracker.Setup(tracker => tracker.UnregisterConnection(4, "connection-1")).Returns(true);
 
+            mediator.Setup(instance => instance.Send(It.IsAny<SetUserOnlineStatusCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             mediator.Setup(instance => instance.Send(It.IsAny<OnlineUsersQuery>(), It.IsAny<CancellationToken>())).ReturnsAsync(onlineUsers);
 
             Mock<IClientProxy> clientProxy = new();
-
             Mock<IHubCallerClients> hubClients = new();
             hubClients.SetupGet(clients => clients.All).Returns(clientProxy.Object);
 
             Mock<HubCallerContext> callerContext = new();
             callerContext.SetupGet(context => context.UserIdentifier).Returns("4");
-
             callerContext.SetupGet(context => context.ConnectionAborted).Returns(CancellationToken.None);
+            callerContext.SetupGet(context => context.ConnectionId).Returns("connection-1");
 
-            ChatHub hub = new(mediator.Object)
+            ChatHub hub = new(mediator.Object, connectionTracker.Object)
             {
                 Context = callerContext.Object,
                 Clients = hubClients.Object
             };
 
-            return new HubFixture(hub, mediator, clientProxy, onlineUsers);
+            return new HubFixture(hub, mediator, connectionTracker, clientProxy, onlineUsers);
         }
 
         private static void VerifyOnlineUsersBroadcast(HubFixture fixture)
@@ -107,6 +189,6 @@ namespace RealtimeChat.Tests.Api
                 Times.Once);
         }
 
-        private sealed record HubFixture(ChatHub Hub, Mock<IMediator> Mediator, Mock<IClientProxy> ClientProxy, List<ConnectedUserDto> OnlineUsers);
+        private sealed record HubFixture(ChatHub Hub, Mock<IMediator> Mediator, Mock<IUserConnectionTracker> ConnectionTracker, Mock<IClientProxy> ClientProxy, List<ConnectedUserDto> OnlineUsers);
     }
 }
