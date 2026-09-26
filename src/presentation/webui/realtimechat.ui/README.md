@@ -1,146 +1,87 @@
 # Siglora Web Client
 
-Siglora is the React and TypeScript web client for the RealtimeChat API.
+React and TypeScript client for the Siglora real-time chat API.
 
-The client currently provides cookie-based authentication, protected routing, session restoration, standardized API error handling, and the initial authenticated application shell.
+## Features
 
-## Technology Stack
-
-- React
-- TypeScript
-- Vite
-- React Router
-- Vitest
-- Testing Library
-- ESLint
-
-## Current Features
-
-- Username and password login
-- HTTP-only authentication cookie support
-- Session restoration after page refresh
+- HttpOnly cookie authentication and session restoration
 - Protected and public-only routes
-- Logout flow
-- RFC Problem Details error handling
-- Responsive authenticated application shell
-- Route and login-flow tests
-- Recent message-history loading
-- HTTP-based message creation
-- Loading, empty, validation, quota, and connection error states
+- Recent message history and message creation
+- SignalR delivery with automatic reconnect
+- Online-user presence and connection status
+- Message de-duplication across HTTP and SignalR
 - Enter-to-send and Shift+Enter multiline input
-
-HTTP messaging is available. Real-time SignalR delivery and online-user presence will be introduced in the next implementation stage.
-
-## Prerequisites
-
-- Node.js 22
-- npm
-- RealtimeChat API running at `http://localhost:5258`
-
-## Configuration
-
-Copy the example environment file:
-
-### PowerShell
-
-```powershell
-Copy-Item .env.example .env.development
-```
-
-### Bash
-
-```bash
-cp .env.example .env.development
-```
-
-The local configuration should contain:
-
-```env
-VITE_API_BASE_URL=http://localhost:5258
-```
-
-Only variables prefixed with `VITE_` are exposed to browser code. Secrets, connection strings, JWT signing keys, and database credentials must never be placed in frontend environment files.
+- Problem Details, validation, quota, session, and connection error states
+- Responsive chat interface
+- Vitest and Testing Library coverage
 
 ## Development
 
-Install dependencies:
+Requirements: Node.js 22, npm, and an API at `http://localhost:5258`.
 
-```bash
+```powershell
+Copy-Item .env.example .env.development
 npm ci
-```
-
-Start the development server:
-
-```bash
 npm run dev
 ```
 
-The client is available at `http://localhost:5173`.
+On Bash, use `cp .env.example .env.development`.
 
-The API must allow this origin and accept credentialed requests.
+The development file contains:
+
+```env
+VITE_API_BASE_URL=http://localhost:5258
+VITE_SIGNALR_HUB_URL=http://localhost:5258/chatHub
+```
+
+Only `VITE_` variables are exposed to browser code. Never place secrets, credentials, signing keys, or connection strings in frontend environment files.
 
 ## Quality Checks
 
-Run linting:
-
 ```bash
+npm ci
 npm run lint
-```
-
-Create a production build:
-
-```bash
 npm run build
-```
-
-Run the automated tests once:
-
-```bash
 npm test
 ```
 
-Run tests in watch mode:
+Use `npm run test:watch` during development.
+
+## Production Container
+
+The multi-stage Dockerfile compiles the client with Node and serves the static output through Nginx:
 
 ```bash
-npm run test:watch
+docker build -t siglora-web .
+docker run --rm -p 5173:8080 siglora-web
 ```
 
-## Project Structure
+Production defaults are root-relative:
+
+- `VITE_API_BASE_URL=/`
+- `VITE_SIGNALR_HUB_URL=/chatHub`
+
+Nginx proxies `/api` and `/chatHub` to the Compose service named `api`. Use the root `compose.yml` to run the complete stack.
+
+## Routes
+
+| Route | Access | Purpose |
+| --- | --- | --- |
+| `/login` | Anonymous | Authenticate with the API |
+| `/chat` | Authenticated | Message history, real-time delivery, and presence |
+
+## Source Layout
 
 ```text
 src/
-├── app/           Application routing and route guards
-├── features/      Feature-oriented modules such as authentication
-├── shared/        Shared API, configuration, and utility code
-├── styles/        Global application styles
-├── test/          Shared test setup
-└── main.tsx       Application entry point
+  app/           Routing and route guards
+  features/      Authentication and chat features
+  shared/        API, configuration, and shared utilities
+  styles/        Global styles
+  test/          Shared test setup
+  main.tsx       Application entry point
 ```
 
 ## Authentication Model
 
-The API writes the JWT to an HTTP-only cookie after a successful login. The client sends requests with credentials enabled and does not store access tokens in local storage or session storage.
-
-On application startup, the client requests the current authenticated session:
-
-- A successful response restores the user.
-- `401 Unauthorized` establishes an anonymous session.
-- Infrastructure and unexpected failures remain distinguishable from an unauthenticated state.
-
-## Routes
-
-| Route    | Access              | Purpose                            |
-| -------- | ------------------- | ---------------------------------- |
-| `/login` | Anonymous users     | Authenticate with the API          |
-| `/chat`  | Authenticated users | Authenticated HTTP chat experience |
-
-## CI
-
-GitHub Actions runs the following frontend checks for pushes and pull requests targeting `master`:
-
-```bash
-npm ci
-npm run lint
-npm run build
-npm test
-```
+The API writes the JWT to an HttpOnly cookie. Requests and the SignalR connection send credentials automatically; the token is never stored in local storage or session storage. On startup, `/api/Auth/session` distinguishes an anonymous `401` from infrastructure failures.

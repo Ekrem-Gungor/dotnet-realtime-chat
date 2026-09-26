@@ -1,0 +1,1299 @@
+diff --git a/.env.example b/.env.example
+index 23a8145..5ea14a9 100644
+--- a/.env.example
++++ b/.env.example
+@@ -6,6 +6,7 @@ DEMO_USER_PASSWORD=Local_demo_password_123!
+ UI_CORS_ORIGIN=http://localhost:5173
+ VITE_API_BASE_URL=http://localhost:5258
+ VITE_SIGNALR_HUB_URL=http://localhost:5258/chatHub
++WEB_PORT=5173
+ API_PORT=5258
+ SQL_PORT=1433
+ REDIS_PORT=6379
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index b7ede6c..fc6416a 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -89,3 +89,6 @@ jobs:
+ 
+       - name: Test
+         run: npm test
++
++      - name: Build web image
++        run: docker build --tag realtimechat-web:ci .
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..7f5a743
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1,31 @@
++# Changelog
++
++All notable changes to Siglora are documented here.
++
++## [1.0.0] - 2026-09-26
++
++### Added
++
++- React and TypeScript web client with protected routing and cookie-based sessions
++- HTTP message history and creation flows
++- SignalR message delivery, reconnect behavior, connection status, and online presence
++- Connection-aware multi-tab presence tracking
++- Redis-backed recent messages and atomic per-user quota
++- Standard Problem Details responses and validation pipeline
++- Production multi-stage frontend image with Nginx reverse proxy
++- Full local Compose stack for web, API, SQL Server, and Redis
++- Frontend image validation in CI
++- Deployment checklist and release documentation
++
++### Changed
++
++- Standardized HTTP and SignalR message payloads on the complete message DTO
++- Added client-side message de-duplication by message ID
++- Allowed frontend configuration to use absolute development URLs or root-relative production paths
++- Updated the portfolio documentation to match the implemented system
++
++### Fixed
++
++- Initial SignalR connection failures now retry after the API returns
++- Closing one of multiple tabs no longer marks the user offline prematurely
++- HTTP and SignalR delivery no longer render the sender's message twice
+diff --git a/README.md b/README.md
+index 4d82149..865232f 100644
+--- a/README.md
++++ b/README.md
+@@ -1,260 +1,144 @@
+-# Siglora (RealtimeChat)
++# Siglora
+ 
+-> A portfolio-oriented real-time chat application built with ASP.NET Core, SignalR, Redis, SQL Server, React, and TypeScript.
++> A portfolio-ready real-time chat application built with ASP.NET Core, SignalR, Redis, SQL Server, React, and TypeScript.
+ 
+-## Overview
+-
+-Siglora is the product-facing name of the RealtimeChat project.
+-
+-The repository demonstrates a layered .NET backend, Redis-backed messaging controls, JWT authentication, standardized API errors, and a React web client with protected routing and session restoration.
+-
+-The web client currently supports authentication, HTTP-based message history, and message creation. Real-time SignalR delivery and online-user presence are the next implementation stage.
++Siglora demonstrates an authenticated, full-stack messaging workflow: users sign in through an HttpOnly cookie, load recent Redis-backed messages, exchange messages in real time, see connection state and online presence, and recover automatically after a temporary API outage.
+ 
+ ## Highlights
+ 
+-### Backend
+-
+-- ASP.NET Core Web API and SignalR
+-- JWT authentication for HTTP and hub connections
+-- HttpOnly authentication cookie for the browser client
+-- ASP.NET Core Identity with role and profile models
+-- SQL Server persistence with Entity Framework Core
+-- Redis sorted sets for recent message storage
+-- Atomic Redis-backed per-user message quota
+-- MediatR commands, queries, and notifications
+-- RFC Problem Details error responses
+-- FluentValidation request validation
+-- Onion-style architectural separation
+-- Swagger authentication support
+-- Automated database migration in the local Compose environment
+-
+-### Frontend
+-
+-- React and TypeScript
+-- Vite development and production builds
+-- Protected and public-only routes
+-- Login, logout, and session restoration
+-- Credentialed API requests
+-- Centralized HTTP and Problem Details handling
+-- Responsive authenticated chat interface
+-- Recent Redis-backed message history
+-- HTTP-based message creation
+-- Loading, empty, validation, authentication, quota, and general error states
+-- Enter-to-send and Shift+Enter multiline input
+-- Vitest and Testing Library coverage
+-
+-### Delivery
+-
+-- Docker Compose for API, SQL Server, and Redis
+-- GitHub Actions backend and frontend quality checks
+-- API container build validation
+-- Safe example configuration files
++- Layered .NET 10 backend with MediatR commands, queries, validation, and notifications
++- React and TypeScript client with protected routing and session restoration
++- SignalR message delivery, automatic reconnect, and connection-aware presence tracking
++- Redis sorted-set message history and atomic per-user message quota
++- ASP.NET Core Identity, EF Core, SQL Server, and JWT authentication
++- RFC Problem Details responses and shared frontend error handling
++- Production frontend image built with Node and served by Nginx
++- One-command local stack for web, API, SQL Server, and Redis
++- Backend, frontend, SignalR, presence, validation, and error-handling tests
++- GitHub Actions checks for .NET, React, Compose, and both container images
+ 
+ ## Architecture
+ 
+ ```mermaid
+ flowchart TB
+-    UI["Siglora React Client"] -->|"HTTP + HttpOnly cookie"| API["ASP.NET Core API"]
+-    UI <-->|"SignalR - planned client integration"| HUB["ChatHub"]
+-    API --> APP["MediatR Application Layer"]
+-    HUB --> APP
+-    APP --> SQL["SQL Server and Identity"]
+-    APP --> REDIS["Redis messages and quota"]
+-    APP --> EVENTS["Application Notifications"]
+-    EVENTS --> HUB
++    Browser["Siglora React client"] -->|"same-origin HTTP"| Web["Nginx web container"]
++    Browser <-->|"SignalR WebSocket"| Web
++    Web -->|"/api and /chatHub proxy"| API["ASP.NET Core API"]
++    API --> App["MediatR application layer"]
++    App --> SQL["SQL Server and Identity"]
++    App --> Redis["Redis messages and quota"]
++    App --> Events["Application notifications"]
++    Events --> API
+ ```
+ 
+-## Authentication Flow
++The web image uses root-relative production URLs. Nginx serves the SPA and proxies `/api` and `/chatHub` to the API, so the browser uses one origin and authentication cookies work for both HTTP and SignalR traffic.
+ 
+-1. The client submits credentials to `POST /api/Auth/login`.
+-2. The API validates the credentials and generates a signed JWT.
+-3. The JWT is returned in the response and written to an HttpOnly cookie.
+-4. The browser client sends the cookie automatically with credentialed requests.
+-5. `GET /api/Auth/session` restores the authenticated user after a page refresh.
+-6. `POST /api/Auth/logout` removes the authentication cookie.
+-7. Protected routes redirect anonymous users to `/login`.
+-8. The web client does not store the JWT in local storage or session storage.
++## Core Flows
+ 
+-Swagger can use the token returned from the login response as a bearer credential. The browser client uses the HttpOnly cookie.
++### Authentication
+ 
+-## Message Flow
++1. `POST /api/Auth/login` validates the credentials and creates a signed JWT.
++2. The API writes the token to an HttpOnly cookie.
++3. The client sends credentialed requests without storing the JWT in browser storage.
++4. `GET /api/Auth/session` restores the user after a refresh.
++5. `POST /api/Auth/logout` clears the browser session.
+ 
+-1. An authenticated user submits a message.
+-2. The server derives the sender identity from the authenticated principal.
+-3. Message validation runs through the MediatR pipeline.
+-4. The user quota is checked and consumed atomically in Redis.
+-5. The message is stored in a Redis sorted set.
+-6. An application notification publishes the message through SignalR.
+-7. Connected clients receive the resulting event.
++Swagger can also use the login response token as a bearer credential.
+ 
+-## Project Structure
++### Messaging
+ 
+-```text
+-src/
+-  core/
+-    RealtimeChat.Domain
+-    RealtimeChat.Application
+-    RealtimeChat.Contracts
+-    RealtimeChat.Common
++1. The API derives the sender from the authenticated principal.
++2. FluentValidation runs through the MediatR pipeline.
++3. Redis atomically consumes the user's message quota.
++4. The message is stored in the recent-message sorted set.
++5. An application notification broadcasts the complete message DTO through SignalR.
++6. Clients de-duplicate messages by ID and render the event once.
+ 
+-  infrastructure/
+-    RealtimeChat.Persistence
+-    RealtimeChat.Infrastructure
+-    RealtimeChat.DependencyInjection
++### Presence and reconnect
+ 
+-  presentation/
+-    webapi/
+-      RealtimeChat.Api
++Presence is tracked per SignalR connection, not as a single boolean per user. A user remains online while at least one tab is connected. The client retries an interrupted connection and refreshes the online-user list after reconnecting.
+ 
+-    webui/
+-      realtimechat.ui
++## Technology
+ 
+-tests/
+-  RealtimeChat.Tests
+-```
++| Area | Stack |
++| --- | --- |
++| Backend | C#, .NET 10, ASP.NET Core, SignalR, EF Core, Identity, MediatR, FluentValidation |
++| Data | SQL Server, Redis |
++| Frontend | React, TypeScript, Vite, React Router, SignalR client |
++| Quality | xUnit, Moq, Vitest, Testing Library, ESLint |
++| Delivery | Docker, Docker Compose, Nginx, GitHub Actions |
+ 
+-The React client uses feature-oriented organization:
++## Project Structure
+ 
+ ```text
+-src/presentation/webui/realtimechat.ui/src/
+-  app/         Application routing and route guards
+-  features/    Feature modules such as authentication
+-  shared/      Shared API and configuration code
+-  styles/      Global application styles
+-  test/        Shared test setup
+-  main.tsx     Application entry point
++src/
++  core/                Domain, application, contracts, and common code
++  infrastructure/      Persistence, Redis/JWT implementations, and composition
++  presentation/
++    webapi/             ASP.NET Core API and SignalR hub
++    webui/              React and TypeScript client
++tests/                  Backend test project
++docs/                   Architecture, deployment checklist, and release notes
+ ```
+ 
+-## Technology Stack
++## Quick Start: Full Container Stack
+ 
+-### Backend
++### Requirements
+ 
+-`C#` · `.NET 10` · `ASP.NET Core Web API` · `SignalR` · `Entity Framework Core` · `ASP.NET Core Identity` · `SQL Server` · `Redis` · `MediatR` · `FluentValidation` · `JWT` · `Swagger`
++- Docker Desktop or Docker Engine with Compose
++- Free local ports `5173`, `5258`, `1433`, and `6379` (or change them in `.env`)
+ 
+-### Frontend
+-
+-`React` · `TypeScript` · `Vite` · `React Router` · `Vitest` · `Testing Library` · `ESLint`
+-
+-### Infrastructure
+-
+-`Docker` · `Docker Compose` · `GitHub Actions`
+-
+-## Local Setup
+-
+-### Prerequisites
+-
+-- Docker Desktop
+-- .NET 10 SDK
+-- Node.js 22
+-- npm
+-
+-## Run the Backend with Docker Compose
+-
+-Copy the example environment file:
+-
+-### PowerShell
++Create local configuration:
+ 
+ ```powershell
+ Copy-Item .env.example .env
+ ```
+ 
+-### Bash
+-
+ ```bash
+ cp .env.example .env
+ ```
+ 
+-Start the API, SQL Server, and Redis:
++Replace the example SQL, JWT, and demo-user passwords in `.env`, then start every service:
+ 
+ ```bash
+ docker compose up --build -d
+ docker compose ps
+ ```
+ 
+-Available backend endpoints:
+-
+-| Service      | Address                         |
+-| ------------ | ------------------------------- |
+-| API          | `http://localhost:5258`         |
+-| Swagger      | `http://localhost:5258/swagger` |
+-| Health check | `http://localhost:5258/health`  |
+-| SignalR hub  | `http://localhost:5258/chatHub` |
+-
+-Database migrations run automatically in the Compose `Development` environment.
+-
+-The local stack also creates a demo user using these `.env` values:
+-
+-- `DEMO_USER_NAME`
+-- `DEMO_USER_EMAIL`
+-- `DEMO_USER_PASSWORD`
+-
+-The example credentials are intended only for disposable local development. Demo identity initialization is disabled outside the Development environment.
++| Service | Address |
++| --- | --- |
++| Siglora web client | `http://localhost:5173` |
++| API | `http://localhost:5258` |
++| Swagger | `http://localhost:5258/swagger` |
++| Health check | `http://localhost:5258/health` |
++| SignalR hub | `http://localhost:5258/chatHub` |
+ 
+-## Run the Web Client
++Open `http://localhost:5173/login` and use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from the root `.env` file. Database migrations and demo-user initialization run automatically only in this local `Development` stack.
+ 
+-Move to the frontend directory:
++Stop the stack without deleting SQL data:
+ 
+ ```bash
+-cd src/presentation/webui/realtimechat.ui
++docker compose down
+ ```
+ 
+-Copy the frontend environment file:
+-
+-### PowerShell
+-
+-```powershell
+-Copy-Item .env.example .env.development
+-```
++## Frontend Development
+ 
+-### Bash
++Start the API stack, then run Vite separately:
+ 
+ ```bash
++cd src/presentation/webui/realtimechat.ui
+ cp .env.example .env.development
+-```
+-
+-Install dependencies and start Vite:
+-
+-```bash
+ npm ci
+ npm run dev
+ ```
+ 
+-The web client is available at:
+-
+-```text
+-http://localhost:5173
+-```
+-
+-The backend must be running at the address configured by `VITE_API_BASE_URL`.
+-
+-## Try the Application
+-
+-1. Start the backend stack.
+-2. Start the React development server.
+-3. Open `http://localhost:5173/login`.
+-4. Use `DEMO_USER_NAME` and `DEMO_USER_PASSWORD` from the root `.env` file.
+-5. Confirm that successful authentication redirects to `/chat`.
+-6. Verify that recent messages are loaded from the API.
+-7. Send a message using the button or the Enter key.
+-8. Use Shift+Enter to create a multiline message.
+-9. Refresh the page to verify session and message-history restoration.
+-10. Use the logout action to remove the session.
+-
+-Messages created through the HTTP API are added to the local message list immediately. Real-time delivery from other connected clients will be added with the SignalR integration.
++On PowerShell, use `Copy-Item .env.example .env.development` instead of `cp`.
+ 
+-## Use Swagger Authentication
++The development environment uses absolute API and hub URLs. The production Docker build uses `/` and `/chatHub`, which Nginx resolves through the same origin.
+ 
+-1. Open `http://localhost:5258/swagger`.
+-2. Execute `POST /api/Auth/login`.
+-3. Use the demo credentials from the root `.env` file.
+-4. Copy the `token` value from the response.
+-5. Select **Authorize**.
+-6. Paste only the token; Swagger adds the `Bearer` prefix.
+-7. Call a protected chat endpoint.
++## Manual Backend Development
+ 
+-## Manual Backend Setup
+-
+-Copy the safe API configuration example:
++Create the ignored local API configuration from the safe example:
+ 
+ ```powershell
+ Copy-Item `
+@@ -262,27 +146,23 @@ Copy-Item `
+   src/presentation/webapi/RealtimeChat.Api/appsettings.Development.json
+ ```
+ 
+-Update the local SQL Server, Redis, JWT, and CORS settings. Local development configuration files are ignored by Git.
+-
+-Apply migrations and run the API:
++Update the local connection and JWT values, then run:
+ 
+ ```bash
+ dotnet restore RealtimeChat.sln
+-
+ dotnet ef database update \
+   --project src/infrastructure/RealtimeChat.Persistence \
+   --startup-project src/presentation/webapi/RealtimeChat.Api
+-
+ dotnet run --project src/presentation/webapi/RealtimeChat.Api
+ ```
+ 
+-Never commit real connection strings, JWT signing keys, Redis credentials, production origins, or private user credentials.
++Never commit real credentials, connection strings, signing keys, or production origins.
+ 
+ ## Quality Checks
+ 
+ ### Backend
+ 
+-Redis-backed tests use database `15` by default to keep test data isolated.
++Redis-backed tests use database `15` by default:
+ 
+ ```bash
+ docker run --rm -d --name realtimechat-test-redis -p 6379:6379 redis:7-alpine
+@@ -290,11 +170,11 @@ dotnet test RealtimeChat.sln --configuration Release
+ docker stop realtimechat-test-redis
+ ```
+ 
+-Set `TEST_REDIS_CONNECTION` to use a different isolated Redis instance.
++Set `TEST_REDIS_CONNECTION` to target another isolated Redis instance.
+ 
+ ### Frontend
+ 
+-Run these commands from `src/presentation/webui/realtimechat.ui`:
++Run from `src/presentation/webui/realtimechat.ui`:
+ 
+ ```bash
+ npm ci
+@@ -303,69 +183,58 @@ npm run build
+ npm test
+ ```
+ 
+-Use watch mode during development:
++## Continuous Integration
+ 
+-```bash
+-npm run test:watch
+-```
++GitHub Actions runs independent backend and frontend jobs for pushes and pull requests targeting `master`.
+ 
+-## Continuous Integration
++- Backend: restore, Release build, tests with Redis, Compose validation, API image build
++- Frontend: deterministic install, lint, production build, tests, web image build
+ 
+-GitHub Actions runs two independent jobs for pushes and pull requests targeting `master`.
++## API Surface
+ 
+-### Backend quality
++| Type | Route / method | Purpose |
++| --- | --- | --- |
++| HTTP | `POST /api/Auth/login` | Authenticate and issue a JWT plus HttpOnly cookie |
++| HTTP | `GET /api/Auth/session` | Return the current authenticated user |
++| HTTP | `POST /api/Auth/logout` | Clear the authentication cookie |
++| HTTP | `POST /api/Chat/create` | Create a message as the authenticated user |
++| HTTP | `GET /api/Chat/messages` | Read recent Redis-backed messages |
++| HTTP | `GET /health` | Report API liveness |
++| SignalR | `/chatHub` | Authenticated real-time connection |
++| Hub | `SendMessage` | Validate, persist, and broadcast a message |
++| Hub | `Join` | Publish the user's join event |
++| Hub | `GetOnlineUsers` | Broadcast the current online-user list |
+ 
+-- Restore the .NET solution
+-- Build in Release mode
+-- Run automated tests with Redis
+-- Validate Docker Compose
+-- Build the API container image
++## Security Decisions
+ 
+-### Frontend quality
++- Browser authentication uses an HttpOnly cookie.
++- JWTs are not persisted in local storage or session storage.
++- Protected API endpoints and the SignalR hub require authentication.
++- Sender identity comes from trusted JWT claims, not request payloads.
++- Validation and operational errors use Problem Details.
++- Redis quota consumption is atomic.
++- Demo credentials are restricted to the local Development environment.
++- Configuration examples contain disposable values only.
+ 
+-- Install dependencies using `npm ci`
+-- Run ESLint
+-- Create a production build
+-- Run Vitest tests
++## Scope and Deployment Status
+ 
+-## API Surface
++Version `v1.0.0` is the portfolio baseline: the application, container definitions, automated tests, and deployment checklist are ready for review. It is **not currently published to the homelab**. The production rollout is intentionally deferred until the target server is available; see [docs/deployment.md](docs/deployment.md).
+ 
+-| Type    | Route / Method           | Purpose                                          |
+-| ------- | ------------------------ | ------------------------------------------------ |
+-| HTTP    | `POST /api/Auth/login`   | Authenticate and issue a JWT and HttpOnly cookie |
+-| HTTP    | `GET /api/Auth/session`  | Return the current authenticated user            |
+-| HTTP    | `POST /api/Auth/logout`  | Remove the authentication cookie                 |
+-| HTTP    | `POST /api/Chat/create`  | Create a message as the authenticated user       |
+-| HTTP    | `GET /api/Chat/messages` | Read recent Redis-backed messages                |
+-| HTTP    | `GET /health`            | Report application liveness                      |
+-| SignalR | `/chatHub`               | Provide the authenticated real-time connection   |
+-| Hub     | `SendMessage`            | Validate, persist, and broadcast a message       |
+-| Hub     | `Join`                   | Broadcast a system join event                    |
+-| Hub     | `GetOnlineUsers`         | Broadcast the current online-user list           |
++Current boundaries:
+ 
+-## Security Decisions
++- Presence is connection-aware within one API process; multi-instance deployments require a shared presence store and SignalR backplane.
++- Registration and password-bootstrap endpoints are outside the demo scope.
++- Redis message retention trimming and broader SQL integration coverage remain follow-ups.
++- Production TLS, secret management, backups, observability, and load testing must be completed during deployment.
+ 
+-- Browser authentication uses an HttpOnly cookie.
+-- The client does not persist JWTs in browser storage.
+-- Protected API operations and the SignalR hub require authentication.
+-- Sender identity is derived from trusted JWT claims.
+-- Validation failures use standardized Problem Details responses.
+-- Message quota consumption is atomic in Redis.
+-- Seeded identities use reserved `example.invalid` addresses.
+-- Demo credentials are limited to local development.
+-- Local configuration files are excluded from source control.
+-- CI validates builds, tests, Compose configuration, and the API image.
+-
+-## Current Limitations
+-
+-- Browser-based SignalR messaging is not implemented yet.
+-- Registration and password-bootstrap endpoints are not provided.
+-- Messages created by other clients require a refresh until the SignalR client is implemented.
+-- Online-state reconciliation may be required after abnormal disconnections.
+-- Docker Compose currently runs backend infrastructure, not the React development server.
+-- Production deployment, secret rotation, observability, load testing, and broader integration coverage require additional work.
+-
+-This repository is a technical learning project and architecture sample rather than a turnkey production chat platform.
++This repository is a portfolio and architecture sample, not a turnkey public chat service.
++
++## Documentation
++
++- [Architecture decisions](docs/architecture.md)
++- [Deployment checklist](docs/deployment.md)
++- [v1.0.0 release notes](docs/release-notes-v1.0.0.md)
++- [Changelog](CHANGELOG.md)
+ 
+ ## Author
+ 
+diff --git a/compose.yml b/compose.yml
+index ca7fd29..a63de3b 100644
+--- a/compose.yml
++++ b/compose.yml
+@@ -1,6 +1,17 @@
+ name: realtimechat
+ 
+ services:
++  web:
++    build:
++      context: ./src/presentation/webui/realtimechat.ui
++      dockerfile: Dockerfile
++    ports:
++      - "${WEB_PORT:-5173}:8080"
++    depends_on:
++      api:
++        condition: service_started
++    restart: unless-stopped
++
+   api:
+     build:
+       context: .
+diff --git a/docs/architecture.md b/docs/architecture.md
+index 24ed723..b90d115 100644
+--- a/docs/architecture.md
++++ b/docs/architecture.md
+@@ -1,61 +1,85 @@
+ # Architecture
+ 
+-RealtimeChat follows a pragmatic layered structure. Business use cases live in the application project, implementation details remain in infrastructure projects, and the API is responsible for HTTP and SignalR concerns.
++Siglora uses a pragmatic layered structure. Business workflows live in the application project, infrastructure projects implement external concerns, and the presentation layer owns HTTP, cookies, SignalR, and the React client.
+ 
+ ```mermaid
+ flowchart TD
+-    API["RealtimeChat.Api"] --> DI["RealtimeChat.DependencyInjection"]
+-    API --> APP["RealtimeChat.Application"]
+-    DI --> INFRA["RealtimeChat.Infrastructure"]
+-    DI --> DATA["RealtimeChat.Persistence"]
+-    INFRA --> CONTRACTS["RealtimeChat.Contracts"]
++    API["RealtimeChat.Api"] --> DI["DependencyInjection"]
++    API --> APP["Application"]
++    DI --> INFRA["Infrastructure"]
++    DI --> DATA["Persistence"]
++    APP --> CONTRACTS["Contracts"]
++    INFRA --> CONTRACTS
+     DATA --> CONTRACTS
+-    APP --> CONTRACTS
+-    CONTRACTS --> DOMAIN["RealtimeChat.Domain"]
++    CONTRACTS --> DOMAIN["Domain"]
+ ```
+ 
+-## Responsibilities
++## Project Responsibilities
+ 
+ | Project | Responsibility |
+-|---|---|
++| --- | --- |
+ | `RealtimeChat.Domain` | Entities, enums, and cache models |
+ | `RealtimeChat.Contracts` | Repository boundaries shared by application and infrastructure |
+-| `RealtimeChat.Application` | Commands, queries, DTOs, notifications, and use-case orchestration |
++| `RealtimeChat.Application` | Commands, queries, DTOs, validation, notifications, and use-case orchestration |
+ | `RealtimeChat.Persistence` | EF Core context, mappings, migrations, and SQL repositories |
+ | `RealtimeChat.Infrastructure` | JWT generation and Redis repository implementations |
+-| `RealtimeChat.DependencyInjection` | Application composition, configuration validation, and service registration |
+-| `RealtimeChat.Api` | HTTP endpoints, authentication cookie transport, SignalR hub, and broadcast handlers |
++| `RealtimeChat.DependencyInjection` | Composition, configuration validation, and service registration |
++| `RealtimeChat.Api` | HTTP endpoints, cookie transport, SignalR hub, connection tracking, and broadcasts |
++| `realtimechat.ui` | React routes, session state, messaging UI, SignalR lifecycle, and client errors |
++
++## Runtime Topology
++
++```mermaid
++flowchart LR
++    Browser["Browser"] --> Web["Nginx + React SPA"]
++    Web -->|"/api"| API["ASP.NET Core API"]
++    Web <-->|"/chatHub"| API
++    API --> SQL["SQL Server"]
++    API --> Redis["Redis"]
++```
++
++The production web build uses root-relative endpoints. Nginx provides SPA fallback and proxies API and WebSocket traffic to the API container. Local Vite development instead uses absolute endpoints from `.env.development`.
+ 
+ ## Key Decisions
+ 
+ ### Authentication boundary
+ 
+-The application layer validates credentials and creates token data. It does not access `HttpContext`. Cookie creation stays in `AuthController`, where HTTP response behavior belongs. Password validation uses `CheckPasswordSignInAsync`, so JWT login does not also create an Identity application cookie.
++The application layer validates credentials and creates token data without accessing `HttpContext`. Cookie creation remains in `AuthController`, where HTTP response behavior belongs. Password validation uses `CheckPasswordSignInAsync`, so JWT login does not also create an Identity application cookie.
++
++### Complete message contract
++
++The command handler creates one `ChatMessageDto`, persists its Redis representation, publishes that DTO in an application notification, and returns the same contract to HTTP callers. Both transports therefore expose the same message ID and sender data. The client de-duplicates concurrent HTTP and SignalR results by message ID.
+ 
+ ### Redis message storage
+ 
+-Recent messages share the `chat:messages` sorted-set key. The Unix timestamp is used as the score, allowing efficient time-window queries.
++Recent messages share the `chat:messages` sorted-set key. Unix time is the score, enabling efficient time-window queries.
+ 
+ ### Redis quota
+ 
+-The key format is `chat:quota:{userId}`. A Lua script lazily creates the one-hour quota and consumes one message allowance in the same Redis operation. This prevents simultaneous requests from consuming the same remaining allowance.
++The key format is `chat:quota:{userId}`. A Lua script lazily creates the one-hour quota and consumes one allowance in a single Redis operation, preventing concurrent requests from spending the same allowance.
++
++### Connection-aware presence
++
++The API tracks SignalR connection IDs per authenticated user. Disconnecting one tab marks the user offline only after the final connection closes. This fixes the common multi-tab presence race while keeping the implementation small.
++
++The tracker is process-local. Before scaling the API horizontally, move presence to a shared store and add a SignalR backplane or managed SignalR service.
+ 
+-### Dependency registration
++### Reconnect behavior
+ 
+-The solution uses the built-in ASP.NET Core container. `AddRealtimeChat` is the only composition entry point and scans both application handlers and API notification handlers for MediatR registrations.
++The client uses SignalR automatic reconnect and a retry loop for failures that occur before the first successful connection. On reconnect it requests a fresh online-user list, so an API restart does not require a browser refresh.
+ 
+ ### Database migrations
+ 
+-Automatic migrations are opt-in and restricted to the `Development` environment. Docker Compose enables them for the local stack; production environments must run migrations as an explicit deployment step.
++Automatic migrations are opt-in and limited to `Development`. The local Compose stack enables them. A production release must run migrations as an explicit deployment step.
+ 
+ ### Demo identity
+ 
+-The local demo identity is configured through environment variables and created idempotently after migrations. The initializer is disabled by default and fails fast if it is enabled outside `Development`.
++The local demo identity is configured by environment variables and created idempotently after migrations. Initialization fails fast if enabled outside `Development`.
+ 
+ ## Known Follow-ups
+ 
+-- Expand authentication and Redis coverage beyond the critical baseline scenarios.
+-- Add SQL Server integration tests with a disposable database instance.
+-- Move online presence to a connection-aware store so multiple tabs and abnormal disconnects are handled correctly.
+-- Add retention trimming for the Redis message sorted set.
+-- Consider separating Identity inheritance from the domain model if the project grows beyond its current scope.
++- Add SQL Server integration tests with a disposable database.
++- Add Redis retention trimming for the message sorted set.
++- Replace process-local presence when introducing multiple API replicas.
++- Add production telemetry, structured log aggregation, and alerting.
++- Consider separating Identity inheritance from the domain model if the system grows beyond portfolio scope.
+diff --git a/docs/deployment.md b/docs/deployment.md
+new file mode 100644
+index 0000000..3b20a89
+--- /dev/null
++++ b/docs/deployment.md
+@@ -0,0 +1,95 @@
++# Deployment Checklist
++
++Siglora's images and Compose topology are ready for a deployment rehearsal. The homelab rollout is intentionally deferred until the target server is available. This document is a checklist, not evidence of a live deployment.
++
++## 1. Target Design
++
++- Publish one HTTPS hostname through the homelab reverse proxy.
++- Route public traffic to the `web` container only.
++- Keep API, SQL Server, and Redis on an internal Docker network where practical.
++- Let Nginx proxy `/api` and `/chatHub` to the API.
++- Persist SQL Server data on storage included in the backup plan.
++- Keep Redis private; decide whether message durability is required before rollout.
++
++## 2. Production Configuration
++
++Do not reuse `.env.example`. Create server-side secrets outside Git for:
++
++- SQL Server administrator password
++- JWT signing key with sufficient entropy
++- Any production demo or operator credential
++- Public application origin
++
++Before rollout:
++
++- Set `ASPNETCORE_ENVIRONMENT=Production`.
++- Disable `DemoIdentity__Enabled`.
++- Disable automatic migrations and run them as an explicit release step.
++- Restrict published SQL Server, Redis, and API ports unless operational access requires them.
++- Configure the external reverse proxy to preserve WebSocket upgrades for `/chatHub`.
++- Configure forwarded headers deliberately for the chosen proxy topology.
++- Verify cookie `Secure`, `SameSite`, domain, and path behavior over HTTPS.
++
++The repository Compose file is optimized for a local portfolio demo. Create a server-specific override instead of placing production values in the tracked file.
++
++## 3. Pre-deployment Gate
++
++Run from a clean checkout:
++
++```bash
++dotnet restore RealtimeChat.sln
++dotnet build RealtimeChat.sln --configuration Release --no-restore
++dotnet test RealtimeChat.sln --configuration Release --no-build --no-restore
++docker compose --env-file .env config --quiet
++docker compose --env-file .env build
++```
++
++Confirm that GitHub Actions is green for the release commit.
++
++## 4. Database and Backup
++
++1. Take a verified SQL Server backup before migration.
++2. Record the current application image tag and migration ID.
++3. Run migrations as a controlled one-off task.
++4. Verify the resulting migration ID.
++5. Confirm restore steps on a disposable database before exposing the service.
++
++Redis currently stores recent messages and quota state. Treat that data as disposable unless persistence and backup are added explicitly.
++
++## 5. Smoke Test
++
++After startup, verify:
++
++1. Web root and SPA route refresh return successfully.
++2. `/health` is healthy through the intended route.
++3. Login, session restoration, and logout work over HTTPS.
++4. Two independent browser sessions receive one copy of each message.
++5. Enter sends; Shift+Enter inserts a line break.
++6. Multiple tabs keep the user online until the last tab closes.
++7. Restarting the API moves the UI through offline/reconnecting/live without F5.
++8. Quota and validation failures render the expected Problem Details messages.
++9. No secrets or JWT values appear in browser storage, logs, or repository files.
++
++## 6. Observability Gate
++
++Before calling the service production-ready, add or confirm:
++
++- Centralized structured logs
++- Uptime checks for web and API health endpoints
++- Alerting for repeated API restarts and database failures
++- Disk-capacity monitoring for SQL Server backups and volumes
++- A retention policy for logs, backups, and Redis messages
++
++## 7. Rollback
++
++Keep the previous immutable image tag and database backup. If the smoke test fails:
++
++1. Stop accepting public traffic.
++2. Roll back the application images.
++3. Restore the database only when the migration is not backward-compatible.
++4. Repeat the health, authentication, and two-client messaging checks.
++5. Record the failure and remediation before retrying.
++
++## Deferred Scale Work
++
++The current presence tracker is in memory and correct for one API instance. Horizontal scaling requires a shared connection/presence store plus a SignalR backplane or managed SignalR service.
+diff --git a/docs/release-notes-v1.0.0.md b/docs/release-notes-v1.0.0.md
+new file mode 100644
+index 0000000..7fbb57d
+--- /dev/null
++++ b/docs/release-notes-v1.0.0.md
+@@ -0,0 +1,63 @@
++# Siglora v1.0.0
++
++**Release date:** 2026-09-26
++
++**Status:** Portfolio baseline; homelab deployment deferred
++
++Siglora v1.0.0 completes the planned portfolio scope for an authenticated real-time chat application. It combines a layered .NET backend with a tested React client, resilient SignalR delivery, Redis-backed messaging controls, and reproducible container packaging.
++
++## What Is Included
++
++- JWT authentication transported to browsers with an HttpOnly cookie
++- Session restoration and protected frontend routes
++- Redis-backed recent message history and atomic message quota
++- Real-time SignalR message broadcasts with a shared HTTP/SignalR DTO
++- Automatic client reconnect after an API interruption
++- Connection-aware online presence for multiple tabs
++- Client-side message de-duplication by stable message ID
++- Standard validation and Problem Details responses
++- Multi-stage frontend image served by Nginx
++- Full local Compose topology for web, API, SQL Server, and Redis
++- Backend and frontend CI quality gates, including container builds
++
++## Verification Summary
++
++The frontend release candidate passed:
++
++- ESLint
++- TypeScript and Vite production build
++- 18 Vitest tests across 4 test files
++
++The repository CI definition also runs .NET Release build/tests with Redis, validates Compose, and builds both API and web images. Those .NET and Docker commands must be rerun in GitHub Actions or on a workstation with the required runtimes before tagging.
++
++## Run Locally
++
++```bash
++cp .env.example .env
++# Replace example passwords and JWT key in .env.
++docker compose up --build -d
++```
++
++Open `http://localhost:5173` and authenticate with the configured demo account.
++
++## Tagging Gate
++
++Create the tag only after CI is green and the container smoke test succeeds:
++
++```bash
++git tag -a v1.0.0 -m "Siglora v1.0.0"
++git push origin v1.0.0
++```
++
++Suggested GitHub release title: `Siglora v1.0.0 — portfolio baseline`
++
++## Deployment Note
++
++No public or homelab deployment is claimed for this release. Follow [the deployment checklist](deployment.md) when the server is available, especially the production environment, secret-management, TLS, migration, backup, and rollback gates.
++
++## Known Boundaries
++
++- One API replica only for correct presence behavior
++- No public registration or password recovery flow
++- Redis message retention trimming is not implemented
++- Production observability and load testing are deferred to deployment
+diff --git a/src/presentation/webui/realtimechat.ui/.dockerignore b/src/presentation/webui/realtimechat.ui/.dockerignore
+new file mode 100644
+index 0000000..93b8edf
+--- /dev/null
++++ b/src/presentation/webui/realtimechat.ui/.dockerignore
+@@ -0,0 +1,7 @@
++node_modules
++dist
++coverage
++.env
++.env.*
++!.env.example
++npm-debug.log*
+diff --git a/src/presentation/webui/realtimechat.ui/.env.example b/src/presentation/webui/realtimechat.ui/.env.example
+index 166ddec..6ece289 100644
+--- a/src/presentation/webui/realtimechat.ui/.env.example
++++ b/src/presentation/webui/realtimechat.ui/.env.example
+@@ -1,2 +1,2 @@
+ VITE_API_BASE_URL=http://localhost:5258
+-VITE_SIGNALR_HUB_URL=http://localhost:5258/chatHub
+\ No newline at end of file
++VITE_SIGNALR_HUB_URL=http://localhost:5258/chatHub
+diff --git a/src/presentation/webui/realtimechat.ui/Dockerfile b/src/presentation/webui/realtimechat.ui/Dockerfile
+new file mode 100644
+index 0000000..421799f
+--- /dev/null
++++ b/src/presentation/webui/realtimechat.ui/Dockerfile
+@@ -0,0 +1,24 @@
++FROM node:22-alpine AS build
++WORKDIR /app
++
++COPY package.json package-lock.json ./
++RUN npm ci
++
++COPY . .
++
++ARG VITE_API_BASE_URL=/
++ARG VITE_SIGNALR_HUB_URL=/chatHub
++ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
++ENV VITE_SIGNALR_HUB_URL=${VITE_SIGNALR_HUB_URL}
++
++RUN npm run build
++
++FROM nginx:1.27-alpine AS runtime
++
++COPY nginx.conf /etc/nginx/conf.d/default.conf
++COPY --from=build /app/dist /usr/share/nginx/html
++
++EXPOSE 8080
++
++HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
++    CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1
+diff --git a/src/presentation/webui/realtimechat.ui/README.md b/src/presentation/webui/realtimechat.ui/README.md
+index 01b124e..ffce3db 100644
+--- a/src/presentation/webui/realtimechat.ui/README.md
++++ b/src/presentation/webui/realtimechat.ui/README.md
+@@ -1,146 +1,87 @@
+ # Siglora Web Client
+ 
+-Siglora is the React and TypeScript web client for the RealtimeChat API.
++React and TypeScript client for the Siglora real-time chat API.
+ 
+-The client currently provides cookie-based authentication, protected routing, session restoration, standardized API error handling, and the initial authenticated application shell.
++## Features
+ 
+-## Technology Stack
+-
+-- React
+-- TypeScript
+-- Vite
+-- React Router
+-- Vitest
+-- Testing Library
+-- ESLint
+-
+-## Current Features
+-
+-- Username and password login
+-- HTTP-only authentication cookie support
+-- Session restoration after page refresh
++- HttpOnly cookie authentication and session restoration
+ - Protected and public-only routes
+-- Logout flow
+-- RFC Problem Details error handling
+-- Responsive authenticated application shell
+-- Route and login-flow tests
+-- Recent message-history loading
+-- HTTP-based message creation
+-- Loading, empty, validation, quota, and connection error states
++- Recent message history and message creation
++- SignalR delivery with automatic reconnect
++- Online-user presence and connection status
++- Message de-duplication across HTTP and SignalR
+ - Enter-to-send and Shift+Enter multiline input
++- Problem Details, validation, quota, session, and connection error states
++- Responsive chat interface
++- Vitest and Testing Library coverage
+ 
+-HTTP messaging is available. Real-time SignalR delivery and online-user presence will be introduced in the next implementation stage.
+-
+-## Prerequisites
+-
+-- Node.js 22
+-- npm
+-- RealtimeChat API running at `http://localhost:5258`
+-
+-## Configuration
+-
+-Copy the example environment file:
++## Development
+ 
+-### PowerShell
++Requirements: Node.js 22, npm, and an API at `http://localhost:5258`.
+ 
+ ```powershell
+ Copy-Item .env.example .env.development
++npm ci
++npm run dev
+ ```
+ 
+-### Bash
+-
+-```bash
+-cp .env.example .env.development
+-```
++On Bash, use `cp .env.example .env.development`.
+ 
+-The local configuration should contain:
++The development file contains:
+ 
+ ```env
+ VITE_API_BASE_URL=http://localhost:5258
++VITE_SIGNALR_HUB_URL=http://localhost:5258/chatHub
+ ```
+ 
+-Only variables prefixed with `VITE_` are exposed to browser code. Secrets, connection strings, JWT signing keys, and database credentials must never be placed in frontend environment files.
++Only `VITE_` variables are exposed to browser code. Never place secrets, credentials, signing keys, or connection strings in frontend environment files.
+ 
+-## Development
+-
+-Install dependencies:
++## Quality Checks
+ 
+ ```bash
+ npm ci
++npm run lint
++npm run build
++npm test
+ ```
+ 
+-Start the development server:
+-
+-```bash
+-npm run dev
+-```
+-
+-The client is available at `http://localhost:5173`.
+-
+-The API must allow this origin and accept credentialed requests.
++Use `npm run test:watch` during development.
+ 
+-## Quality Checks
++## Production Container
+ 
+-Run linting:
++The multi-stage Dockerfile compiles the client with Node and serves the static output through Nginx:
+ 
+ ```bash
+-npm run lint
++docker build -t siglora-web .
++docker run --rm -p 5173:8080 siglora-web
+ ```
+ 
+-Create a production build:
++Production defaults are root-relative:
+ 
+-```bash
+-npm run build
+-```
++- `VITE_API_BASE_URL=/`
++- `VITE_SIGNALR_HUB_URL=/chatHub`
+ 
+-Run the automated tests once:
++Nginx proxies `/api` and `/chatHub` to the Compose service named `api`. Use the root `compose.yml` to run the complete stack.
+ 
+-```bash
+-npm test
+-```
+-
+-Run tests in watch mode:
++## Routes
+ 
+-```bash
+-npm run test:watch
+-```
++| Route | Access | Purpose |
++| --- | --- | --- |
++| `/login` | Anonymous | Authenticate with the API |
++| `/chat` | Authenticated | Message history, real-time delivery, and presence |
+ 
+-## Project Structure
++## Source Layout
+ 
+ ```text
+ src/
+-├── app/           Application routing and route guards
+-├── features/      Feature-oriented modules such as authentication
+-├── shared/        Shared API, configuration, and utility code
+-├── styles/        Global application styles
+-├── test/          Shared test setup
+-└── main.tsx       Application entry point
++  app/           Routing and route guards
++  features/      Authentication and chat features
++  shared/        API, configuration, and shared utilities
++  styles/        Global styles
++  test/          Shared test setup
++  main.tsx       Application entry point
+ ```
+ 
+ ## Authentication Model
+ 
+-The API writes the JWT to an HTTP-only cookie after a successful login. The client sends requests with credentials enabled and does not store access tokens in local storage or session storage.
+-
+-On application startup, the client requests the current authenticated session:
+-
+-- A successful response restores the user.
+-- `401 Unauthorized` establishes an anonymous session.
+-- Infrastructure and unexpected failures remain distinguishable from an unauthenticated state.
+-
+-## Routes
+-
+-| Route    | Access              | Purpose                            |
+-| -------- | ------------------- | ---------------------------------- |
+-| `/login` | Anonymous users     | Authenticate with the API          |
+-| `/chat`  | Authenticated users | Authenticated HTTP chat experience |
+-
+-## CI
+-
+-GitHub Actions runs the following frontend checks for pushes and pull requests targeting `master`:
+-
+-```bash
+-npm ci
+-npm run lint
+-npm run build
+-npm test
+-```
++The API writes the JWT to an HttpOnly cookie. Requests and the SignalR connection send credentials automatically; the token is never stored in local storage or session storage. On startup, `/api/Auth/session` distinguishes an anonymous `401` from infrastructure failures.
+diff --git a/src/presentation/webui/realtimechat.ui/nginx.conf b/src/presentation/webui/realtimechat.ui/nginx.conf
+new file mode 100644
+index 0000000..5ea129a
+--- /dev/null
++++ b/src/presentation/webui/realtimechat.ui/nginx.conf
+@@ -0,0 +1,46 @@
++server {
++    listen 8080;
++    listen [::]:8080;
++    server_name _;
++
++    root /usr/share/nginx/html;
++    index index.html;
++
++    location = /healthz {
++        access_log off;
++        default_type text/plain;
++        return 200 "healthy\n";
++    }
++
++    location /api/ {
++        proxy_pass http://api:8080;
++        proxy_http_version 1.1;
++        proxy_set_header Host $http_host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++    }
++
++    location /chatHub {
++        proxy_pass http://api:8080;
++        proxy_http_version 1.1;
++        proxy_set_header Host $http_host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_set_header Upgrade $http_upgrade;
++        proxy_set_header Connection "upgrade";
++        proxy_cache_bypass $http_upgrade;
++        proxy_read_timeout 3600s;
++    }
++
++    location /assets/ {
++        try_files $uri =404;
++        expires 1y;
++        add_header Cache-Control "public, immutable";
++    }
++
++    location / {
++        try_files $uri $uri/ /index.html;
++    }
++}
+diff --git a/src/presentation/webui/realtimechat.ui/package-lock.json b/src/presentation/webui/realtimechat.ui/package-lock.json
+index 7afe39a..70654e1 100644
+--- a/src/presentation/webui/realtimechat.ui/package-lock.json
++++ b/src/presentation/webui/realtimechat.ui/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "realtimechat.ui",
+-  "version": "0.0.0",
++  "version": "1.0.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "realtimechat.ui",
+-      "version": "0.0.0",
++      "version": "1.0.0",
+       "dependencies": {
+         "@microsoft/signalr": "^10.0.0",
+         "react": "^19.2.8",
+diff --git a/src/presentation/webui/realtimechat.ui/package.json b/src/presentation/webui/realtimechat.ui/package.json
+index 949e5e0..56fb0f2 100644
+--- a/src/presentation/webui/realtimechat.ui/package.json
++++ b/src/presentation/webui/realtimechat.ui/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "realtimechat.ui",
+   "private": true,
+-  "version": "0.0.0",
++  "version": "1.0.0",
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
+diff --git a/src/presentation/webui/realtimechat.ui/src/shared/config/environment.ts b/src/presentation/webui/realtimechat.ui/src/shared/config/environment.ts
+index b6da3d1..dfed825 100644
+--- a/src/presentation/webui/realtimechat.ui/src/shared/config/environment.ts
++++ b/src/presentation/webui/realtimechat.ui/src/shared/config/environment.ts
+@@ -1,4 +1,4 @@
+-function readAbsoluteUrl(
++function readApplicationUrl(
+   variableName: string,
+   configuredValue: string | undefined,
+ ): string {
+@@ -8,23 +8,36 @@ function readAbsoluteUrl(
+     throw new Error(`${variableName} is required.`);
+   }
+ 
++  const isAbsoluteUrl = /^https?:\/\//i.test(normalizedValue);
++  const isRootRelativeUrl = normalizedValue.startsWith("/");
++
++  if (!isAbsoluteUrl && !isRootRelativeUrl) {
++    throw new Error(
++      `${variableName} must be an absolute HTTP URL or a root-relative path.`,
++    );
++  }
++
+   let parsedUrl: URL;
+ 
+   try {
+-    parsedUrl = new URL(normalizedValue);
++    parsedUrl = new URL(normalizedValue, window.location.origin);
+   } catch {
+-    throw new Error(`${variableName} must be a valid absolute URL.`);
++    throw new Error(`${variableName} must be a valid application URL.`);
++  }
++
++  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
++    throw new Error(`${variableName} must use HTTP or HTTPS.`);
+   }
+ 
+   return parsedUrl.toString().replace(/\/$/, "");
+ }
+ 
+ export const environment = Object.freeze({
+-  apiBaseUrl: readAbsoluteUrl(
++  apiBaseUrl: readApplicationUrl(
+     "VITE_API_BASE_URL",
+     import.meta.env.VITE_API_BASE_URL,
+   ),
+-  signalRHubUrl: readAbsoluteUrl(
++  signalRHubUrl: readApplicationUrl(
+     "VITE_SIGNALR_HUB_URL",
+     import.meta.env.VITE_SIGNALR_HUB_URL,
+   ),
+diff --git a/src/presentation/webui/realtimechat.ui/src/shared/config/tests/environment.test.ts b/src/presentation/webui/realtimechat.ui/src/shared/config/tests/environment.test.ts
+new file mode 100644
+index 0000000..7d30c0a
+--- /dev/null
++++ b/src/presentation/webui/realtimechat.ui/src/shared/config/tests/environment.test.ts
+@@ -0,0 +1,44 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++
++describe("environment", () => {
++  afterEach(() => {
++    vi.unstubAllEnvs();
++    vi.resetModules();
++  });
++
++  it("resolves root-relative production routes against the current origin", async () => {
++    vi.stubEnv("VITE_API_BASE_URL", "/");
++    vi.stubEnv("VITE_SIGNALR_HUB_URL", "/chatHub");
++
++    const { environment } = await import("../environment");
++
++    expect(environment.apiBaseUrl).toBe(window.location.origin);
++    expect(environment.signalRHubUrl).toBe(
++      `${window.location.origin}/chatHub`,
++    );
++  });
++
++  it("keeps absolute development URLs", async () => {
++    vi.stubEnv("VITE_API_BASE_URL", "http://localhost:5258");
++    vi.stubEnv(
++      "VITE_SIGNALR_HUB_URL",
++      "http://localhost:5258/chatHub",
++    );
++
++    const { environment } = await import("../environment");
++
++    expect(environment.apiBaseUrl).toBe("http://localhost:5258");
++    expect(environment.signalRHubUrl).toBe(
++      "http://localhost:5258/chatHub",
++    );
++  });
++
++  it("rejects non-root-relative paths", async () => {
++    vi.stubEnv("VITE_API_BASE_URL", "api");
++    vi.stubEnv("VITE_SIGNALR_HUB_URL", "/chatHub");
++
++    await expect(import("../environment")).rejects.toThrow(
++      "VITE_API_BASE_URL must be an absolute HTTP URL or a root-relative path.",
++    );
++  });
++});

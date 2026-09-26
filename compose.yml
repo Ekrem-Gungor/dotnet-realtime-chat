@@ -1,6 +1,17 @@
 name: realtimechat
 
 services:
+  web:
+    build:
+      context: ./src/presentation/webui/realtimechat.ui
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT:-5173}:8080"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
   api:
     build:
       context: .
